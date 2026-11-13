@@ -1,0 +1,75 @@
+{
+  "projectTitle": "Fragment RPG",
+  "teamName": "Re:Call",
+  "version": "1.1.0",
+  "Episode_Dialog_DB": [
+    {
+      "episode": 1,
+      "episodeTitle": "기억조각 배경 복원 퍼즐맵",
+      "dialogs": [
+        {
+          "dialogId": "DLG_PAST_01",
+          "speaker": "과거의 시계공",
+          "text": "드디어 이 광장의 시계탑 아래에서 다시 만났구나. 네가 떠나기 전에 이 회중시계를 꼭 건네주고 싶었단다."
+        },
+        {
+          "dialogId": "DLG_PAST_02",
+          "speaker": "과거의 아이",
+          "text": "고마워요, 할아버지! 가로등길도, 시계탑 광장도, 이 벚꽃 벤치도 절대 잊지 않을게요!"
+        }
+      ]
+    }
+  ],
+  "Clue_Fragment_DB": [
+    {
+      "clueId": "FRAG_01",
+      "episode": 1,
+      "title": "기억조각 1",
+      "description": "비어진 배경의 왼쪽 공간(가로등 산책로)을 채워 넣을 수 있는 첫 번째 기억조각.",
+      "chronologicalOrder": 1
+    },
+    {
+      "clueId": "FRAG_02",
+      "episode": 1,
+      "title": "기억조각 2",
+      "description": "비어진 배경의 중앙 공간(시계탑 광장 다리)을 채워 넣을 수 있는 두 번째 기억조각.",
+      "chronologicalOrder": 2
+    },
+    {
+      "clueId": "FRAG_03",
+      "episode": 1,
+      "title": "기억조각 3",
+      "description": "비어진 배경의 오른쪽 공간(벚꽃나무 벤치)을 채워 넣을 수 있는 세 번째 기억조각.",
+      "chronologicalOrder": 3
+    }
+  ],
+  "Puzzle_Rule_DB": [
+    {
+      "puzzleId": "PUZ_MAP_RESTORE",
+      "episode": 1,
+      "puzzleType": "SpatialRestoration",
+      "title": "비어진 배경에 기억조각 1, 2, 3 맞추기",
+      "description": "맵에서 기억조각 1, 2, 3을 수집한 뒤 비어진 배경 1, 2, 3에 알맞게 끼워 넣어 하나의 맵을 완성하세요.",
+      "targetPlacements": [
+        {
+          "slotId": "SLOT_BG_01",
+          "requiredItemId": "FRAG_01",
+          "targetPosition": { "x": -3.2, "y": 0.4 },
+          "allowedTolerance": 1.0
+        },
+        {
+          "slotId": "SLOT_BG_02",
+          "requiredItemId": "FRAG_02",
+          "targetPosition": { "x": 0.0, "y": 0.4 },
+          "allowedTolerance": 1.0
+        },
+        {
+          "slotId": "SLOT_BG_03",
+          "requiredItemId": "FRAG_03",
+          "targetPosition": { "x": 3.2, "y": 0.4 },
+          "allowedTolerance": 1.0
+        }
+      ]
+    }
+  ]
+}
