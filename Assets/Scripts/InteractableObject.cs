@@ -7,13 +7,14 @@ namespace FragmentRPG
     {
         NPCDialog,      // NPC / 과거의 기억 대사 출력
         ClueFragment,   // 기억조각(1, 2, 3) 아이템 수집
-        PuzzleTrigger,  // 퍼즐 창 호출
-        MapBlankSlot    // 배경의 비어진 퍼즐 빈칸 (기억조각 1, 2, 3을 끼워 넣어 맵을 완성하는 슬롯)
+        PuzzleTrigger,  // 최종 기억 수리 제단 (순서 맞추기 -> 잘못된 기억 찾기 연속 퍼즐 호출)
+        MapBlankSlot,   // 배경의 비어진 퍼즐 빈칸 (기억조각 1, 2, 3을 끼워 넣어 맵을 완성하는 슬롯)
+        SpacePortal     // 거점(기억 수리점) <-> 기억 공간(퍼즐맵) 이동 포털
     }
 
     /// <summary>
     /// 씬 내 상호작용 가능한 오브젝트 컴포넌트.
-    /// 기억조각(1,2,3) 수집, 배경의 비어진 퍼즐 칸 복원, 과거의 기억(NPC) 대사 출력을 담당합니다.
+    /// NPC 대사, 기억조각 수집, 배경 빈칸 복원, 최종 퍼즐 호출, 공간 이동 포털을 담당합니다.
     /// </summary>
     [RequireComponent(typeof(Collider2D))]
     public class InteractableObject : MonoBehaviour
@@ -21,6 +22,7 @@ namespace FragmentRPG
         public static event Action<string, string, int, int> OnDialogPrinted;
         public static event Action<string, string, string> OnClueCollected;
         public static event Action<InteractableObject> OnBlankSlotInteracted;
+        public static event Action<string> OnPortalTriggered;
 
         [Header("Interactable Info")]
         [SerializeField] private string objectId = "OBJ_001";
@@ -35,6 +37,8 @@ namespace FragmentRPG
         {
             "이곳에는 흐릿한 기억의 잔상이 남아 있다."
         };
+        [TextArea(2, 5)]
+        [SerializeField] private string[] clearedDialogLines = new string[0];
         private int currentDialogIndex = 0;
 
         [Header("Clue Fragment Settings (기억조각 1, 2, 3)")]
@@ -53,9 +57,10 @@ namespace FragmentRPG
         [SerializeField] private Color filledBackgroundColor = Color.white;
         [SerializeField] private GameObject restoredVisualChild;
 
-        [Header("Puzzle Trigger Settings")]
-        [SerializeField] private string puzzleId = "PUZ_MAP_RESTORE";
-        [SerializeField] private PuzzleType puzzleType = PuzzleType.SpatialRestoration;
+        [Header("Puzzle Trigger / Portal Settings")]
+        [SerializeField] private string puzzleId = "PUZ_EP1_FINAL";
+        [SerializeField] private PuzzleType puzzleType = PuzzleType.ChronologicalOrder;
+        [SerializeField] private string targetSpaceId = "SPACE_MEMORY_MAP";
 
         public string ObjectId => objectId;
         public string DisplayName => displayName;
@@ -68,6 +73,7 @@ namespace FragmentRPG
         public bool IsSlotFilled => isSlotFilled;
         public string PuzzleId => puzzleId;
         public PuzzleType PuzzleKind => puzzleType;
+        public string TargetSpaceId => targetSpaceId;
         public bool CanInteract => canInteract;
 
         public void SetupClue(string id, string title, string description)
@@ -108,12 +114,13 @@ namespace FragmentRPG
             }
         }
 
-        public void SetupNPC(string id, string npcName, string dlgId, string[] lines)
+        public void SetupNPC(string id, string npcName, string dlgId, string[] lines, string[] afterClearLines = null)
         {
             objectId = id;
             displayName = npcName;
             dialogId = dlgId;
             fallbackDialogLines = lines;
+            clearedDialogLines = afterClearLines ?? new string[0];
             interactionType = InteractionType.NPCDialog;
             canInteract = true;
         }
@@ -125,6 +132,15 @@ namespace FragmentRPG
             puzzleId = targetPuzzleId;
             puzzleType = targetType;
             interactionType = InteractionType.PuzzleTrigger;
+            canInteract = true;
+        }
+
+        public void SetupSpacePortal(string id, string portalName, string destinationSpaceId)
+        {
+            objectId = id;
+            displayName = portalName;
+            targetSpaceId = destinationSpaceId;
+            interactionType = InteractionType.SpacePortal;
             canInteract = true;
         }
 
@@ -243,25 +259,39 @@ namespace FragmentRPG
                 case InteractionType.PuzzleTrigger:
                     OpenPuzzleWindow();
                     break;
+
+                case InteractionType.SpacePortal:
+                    TriggerSpacePortal();
+                    break;
             }
         }
 
         private void PrintNPCDialog()
         {
-            if (fallbackDialogLines == null || fallbackDialogLines.Length == 0)
+            bool isEpisodeCleared = PuzzleManager.Instance != null && PuzzleManager.Instance.IsEpisodeFullyRepaired;
+            string[] activeLines = (isEpisodeCleared && clearedDialogLines != null && clearedDialogLines.Length > 0)
+                ? clearedDialogLines
+                : fallbackDialogLines;
+
+            if (activeLines == null || activeLines.Length == 0)
             {
                 OnDialogPrinted?.Invoke(displayName, "...", 1, 1);
                 return;
             }
 
-            string line = fallbackDialogLines[currentDialogIndex];
-            int step = currentDialogIndex + 1;
-            int total = fallbackDialogLines.Length;
+            if (currentDialogIndex >= activeLines.Length)
+            {
+                currentDialogIndex = 0;
+            }
 
-            Debug.Log($"[과거의 기억 / 대사 | {displayName}] ({step}/{total}): \"{line}\"");
+            string line = activeLines[currentDialogIndex];
+            int step = currentDialogIndex + 1;
+            int total = activeLines.Length;
+
+            Debug.Log($"[대사 | {displayName}] ({step}/{total}): \"{line}\"");
             OnDialogPrinted?.Invoke(displayName, line, step, total);
 
-            currentDialogIndex = (currentDialogIndex + 1) % fallbackDialogLines.Length;
+            currentDialogIndex = (currentDialogIndex + 1) % activeLines.Length;
         }
 
         private void CollectClueFragment()
@@ -296,6 +326,12 @@ namespace FragmentRPG
             {
                 PuzzleManager.Instance.OpenPuzzle(puzzleId, puzzleType);
             }
+        }
+
+        private void TriggerSpacePortal()
+        {
+            Debug.Log($"[공간 이동 포털] '{displayName}' -> 목표 공간: {targetSpaceId}");
+            OnPortalTriggered?.Invoke(targetSpaceId);
         }
     }
 }

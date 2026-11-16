@@ -9,12 +9,28 @@ using UnityEngine.UI;
 namespace FragmentRPG.EditorTools
 {
     /// <summary>
-    /// 고해상도 프로시저럴 2D 픽셀/아트 텍스처(돌바닥 광장, 시계탑, 강물, 가로등길, 아치 다리, 벚꽃 벤치,
-    /// 퍼즐 빈칸 균열, 직소 퍼즐 조각, RPG 캐릭터)를 생성하여 그럴싸한 2D 퍼즐맵 배경을 구축하는 빌더.
+    /// [2순위] 거점 '기억 수리점 공방(RepairShop_Space)' <-> '시계공의 기억 공간(MemoryMap_Space)' 및
+    /// [1순위] 배경 복원(③) -> 과거의 기억 관람 -> 기억 순서 맞추기(①) -> 잘못된 기억 찾기(②)
+    /// 전체 씬 구조를 자동 생성하는 에디터 빌더.
     /// </summary>
+    [InitializeOnLoad]
     public static class Editor_RoomBuilder
     {
         private const string SpriteFolder = "Assets/Resources/GeneratedSprites";
+        private const string AutoBuildKey = "FragmentRPG_Priority1And2_Built_v6";
+
+        static Editor_RoomBuilder()
+        {
+            EditorApplication.delayCall += () =>
+            {
+                if (EditorApplication.isPlayingOrWillChangePlaymode) return;
+                if (!SessionState.GetBool(AutoBuildKey, false))
+                {
+                    SessionState.SetBool(AutoBuildKey, true);
+                    BuildDefaultRoomSceneInternal();
+                }
+            };
+        }
 
         [MenuItem("Fragment RPG/1. 기본 씬 오브젝트 자동 생성", false, 1)]
         public static void BuildDefaultRoomScene()
@@ -30,20 +46,24 @@ namespace FragmentRPG.EditorTools
         [MenuItem("Fragment RPG/2. GitHub 업로드 (Push) 실행", false, 2)]
         public static void PushToGitHubFromEditor()
         {
+            UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
+            AssetDatabase.SaveAssets();
+            string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
                 FileName = "cmd.exe",
-                Arguments = "/k cd /d \"C:\\Users\\wjdtk\\FragmentRPG\" && echo [Fragment RPG] Uploading to GitHub... && git push -u origin main",
+                Arguments = $"/k cd /d \"{projectRoot}\" && echo [Fragment RPG] Staging, committing, and pushing to GitHub... && git add . && (git commit -m \"Update Fragment RPG project\" || echo No new changes to commit) && git push -u origin main",
                 UseShellExecute = true
             });
         }
 
         private static void BuildDefaultRoomSceneInternal()
         {
-            if (EditorApplication.isPlaying) return;
+            if (EditorApplication.isPlayingOrWillChangePlaymode) return;
 
             EnsureRichArtSprites();
 
+            Sprite repairShopBgSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_RepairShopCanvas.png");
             Sprite fullMapBgSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_FullMapCanvas.png");
             Sprite voidSlotSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_VoidSlot.png");
             Sprite restoredLeftSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Restored_Left.png");
@@ -54,7 +74,6 @@ namespace FragmentRPG.EditorTools
             Sprite clocktowerSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Clocktower.png");
             Sprite treeSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Tree.png");
             Sprite lampSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_StreetLamp.png");
-            Sprite squareSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Square.png");
 
             if (Camera.main != null)
             {
@@ -66,7 +85,7 @@ namespace FragmentRPG.EditorTools
 
             ClearSceneExceptMainCamera();
 
-            // 1. 매니저 생성
+            // 1. 매니저 오브젝트 생성
             GameObject managerRoot = new GameObject("@Managers");
             Undo.RegisterCreatedObjectUndo(managerRoot, "Create @Managers");
 
@@ -75,65 +94,10 @@ namespace FragmentRPG.EditorTools
             managerRoot.AddComponent<StorySaveManager>();
             FragmentUIManager uiMgr = managerRoot.AddComponent<FragmentUIManager>();
 
-            // 2. 그럴싸한 2D 타운/광장 배경 환경 구축
-            SpriteRenderer mainFloorSr = BuildDetailedTownEnvironment(
-                fullMapBgSprite,
-                clocktowerSprite,
-                treeSprite,
-                lampSprite,
-                squareSprite
-            );
-
-            // 3. 배경의 비어진 부분 3곳 (강물과 산책로가 끊겨 있는 퍼즐 빈칸 1, 2, 3)
-            GameObject slotsRoot = new GameObject("BackgroundPuzzleSlots");
-            Undo.RegisterCreatedObjectUndo(slotsRoot, "Create BackgroundPuzzleSlots");
-
-            // 비어진 배경 1 (왼쪽: 가로등 산책로와 꽃길 다리 <- 기억조각 1)
-            CreateRichBlankSlot(
-                slotsRoot.transform,
-                "BlankSlot_01",
-                new Vector3(-2.1f, 0.15f, 0f),
-                "SLOT_BG_01",
-                "비어진 배경 1 (가로등 산책로)",
-                "[빈 배경 1]",
-                "FRAG_01",
-                voidSlotSprite,
-                restoredLeftSprite,
-                lampSprite
-            );
-
-            // 비어진 배경 2 (중앙: 시계탑 광장 중앙 석조 다리 <- 기억조각 2)
-            CreateRichBlankSlot(
-                slotsRoot.transform,
-                "BlankSlot_02",
-                new Vector3(1.1f, 0.15f, 0f),
-                "SLOT_BG_02",
-                "비어진 배경 2 (중앙 시계탑 다리)",
-                "[빈 배경 2]",
-                "FRAG_02",
-                voidSlotSprite,
-                restoredCenterSprite,
-                null
-            );
-
-            // 비어진 배경 3 (오른쪽: 벚꽃나무와 강변 벤치길 <- 기억조각 3)
-            CreateRichBlankSlot(
-                slotsRoot.transform,
-                "BlankSlot_03",
-                new Vector3(4.3f, 0.15f, 0f),
-                "SLOT_BG_03",
-                "비어진 배경 3 (벚꽃나무 벤치길)",
-                "[빈 배경 3]",
-                "FRAG_03",
-                voidSlotSprite,
-                restoredRightSprite,
-                treeSprite
-            );
-
-            // 4. 플레이어 생성 (RPG 캐릭터 스프라이트)
+            // 2. 플레이어 생성 (거점과 기억 공간 모두에서 활약하는 주인공 수리공)
             GameObject playerObj = new GameObject("Player");
             Undo.RegisterCreatedObjectUndo(playerObj, "Create Player");
-            playerObj.transform.position = new Vector3(1.1f, -2.0f, 0f);
+            playerObj.transform.position = new Vector3(1.1f, -1.8f, 0f);
             playerObj.tag = "Player";
 
             SpriteRenderer playerSprite = playerObj.AddComponent<SpriteRenderer>();
@@ -153,9 +117,72 @@ namespace FragmentRPG.EditorTools
             CreateWorldLabel(playerObj.transform, "수리공(플레이어)", new Vector3(0f, 0.72f, 0f), new Color(0.55f, 0.95f, 1f, 1f), 0.065f);
             interactionMgr.SetPlayerTransform(playerObj.transform);
 
-            // 5. 기억조각 1, 2, 3 아이템 (직소 퍼즐 조각 아이콘)
+            // 3. [2순위] 거점 공간: 『기억 수리점 공방 (RepairShop_Space)』 생성
+            GameObject repairShopRoot = BuildRepairShopSpace(
+                repairShopBgSprite,
+                charSprite,
+                puzzlePieceSprite,
+                lampSprite
+            );
+
+            // 4. [1순위 & 2순위] 손님의 기억 공간: 『시계공의 기억 공간 퍼즐맵 (MemoryMap_Space)』 생성
+            GameObject memoryMapRoot = new GameObject("MemoryMap_Space");
+            Undo.RegisterCreatedObjectUndo(memoryMapRoot, "Create MemoryMap_Space");
+
+            SpriteRenderer mainFloorSr = BuildDetailedTownEnvironment(
+                memoryMapRoot.transform,
+                fullMapBgSprite,
+                clocktowerSprite,
+                treeSprite,
+                lampSprite
+            );
+
+            // 4-1. 배경의 비어진 부분 3곳 (퍼즐 ③ 공간 복원 슬롯)
+            GameObject slotsRoot = new GameObject("BackgroundPuzzleSlots");
+            slotsRoot.transform.SetParent(memoryMapRoot.transform, false);
+
+            CreateRichBlankSlot(
+                slotsRoot.transform,
+                "BlankSlot_01",
+                new Vector3(-2.1f, 0.15f, 0f),
+                "SLOT_BG_01",
+                "비어진 배경 1 (가로등 산책로)",
+                "[빈 배경 1]",
+                "FRAG_01",
+                voidSlotSprite,
+                restoredLeftSprite,
+                lampSprite
+            );
+
+            CreateRichBlankSlot(
+                slotsRoot.transform,
+                "BlankSlot_02",
+                new Vector3(1.1f, 0.15f, 0f),
+                "SLOT_BG_02",
+                "비어진 배경 2 (중앙 시계탑 다리)",
+                "[빈 배경 2]",
+                "FRAG_02",
+                voidSlotSprite,
+                restoredCenterSprite,
+                null
+            );
+
+            CreateRichBlankSlot(
+                slotsRoot.transform,
+                "BlankSlot_03",
+                new Vector3(4.3f, 0.15f, 0f),
+                "SLOT_BG_03",
+                "비어진 배경 3 (벚꽃나무 벤치길)",
+                "[빈 배경 3]",
+                "FRAG_03",
+                voidSlotSprite,
+                restoredRightSprite,
+                treeSprite
+            );
+
+            // 4-2. 기억조각 1, 2, 3 아이템 배치
             GameObject clueParent = new GameObject("ClueFragments");
-            Undo.RegisterCreatedObjectUndo(clueParent, "Create ClueFragments");
+            clueParent.transform.SetParent(memoryMapRoot.transform, false);
 
             CreateClueObject(
                 clueParent.transform,
@@ -190,18 +217,34 @@ namespace FragmentRPG.EditorTools
                 puzzlePieceSprite
             );
 
-            // 6. 맵 완성 시 위쪽 시계탑 광장에 나타나는 '과거의 기억' 장면
-            GameObject pastMemoryRoot = BuildPastMemoryScene(charSprite, puzzlePieceSprite);
+            // 4-3. 기억 공간에서 수리점으로 돌아가는 귀환 포털
+            CreatePortalObject(
+                memoryMapRoot.transform,
+                "Portal_ReturnToShop",
+                new Vector3(5.3f, -3.1f, 0f),
+                "PORTAL_TO_SHOP",
+                "수리점 귀환 문 ([E/Space] 공방 복귀)",
+                FragmentUIManager.SpaceRepairShop,
+                new Color(0.45f, 0.95f, 1.0f, 0.95f),
+                puzzlePieceSprite
+            );
+
+            // 4-4. [1순위 핵심] 배경 복원 완성 시 위쪽 광장에 나타나는 '과거의 기억 3장면 & 최종 수리 제단'
+            GameObject pastMemoryRoot = BuildPastMemoryScene(memoryMapRoot.transform, charSprite, puzzlePieceSprite);
             pastMemoryRoot.SetActive(false);
 
-            // 7. 인게임 UI Canvas 생성
-            BuildPuzzleMapUICanvas(uiMgr, pastMemoryRoot, mainFloorSr);
+            // 시작 시에는 거점(기억 수리점)이 활성화되고 기억 공간 맵은 비활성화
+            repairShopRoot.SetActive(true);
+            memoryMapRoot.SetActive(false);
+
+            // 5. 인게임 UI Canvas 생성
+            BuildPuzzleMapUICanvas(uiMgr, repairShopRoot, memoryMapRoot, pastMemoryRoot, mainFloorSr);
 
             Selection.activeGameObject = playerObj;
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
             UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
 
-            Debug.Log("[Editor_RoomBuilder] ★ 고해상도 2D 타운/광장 배경과 퍼즐 조각 아트가 적용된 맵 생성이 완료되었습니다!");
+            Debug.Log("[Editor_RoomBuilder] ★ 1순위(과거의 기억 후속 퍼즐 체인) & 2순위(기억 수리점 <-> 기억 공간 포털 루프) 구축이 완료되었습니다!");
         }
 
         private static void ClearSceneExceptMainCamera()
@@ -219,38 +262,145 @@ namespace FragmentRPG.EditorTools
             }
         }
 
+        /// <summary>
+        /// [2순위] 주인공의 거점 공간: 『기억 수리점 공방 (RepairShop_Space)』 구축
+        /// </summary>
+        private static GameObject BuildRepairShopSpace(
+            Sprite shopBgSprite,
+            Sprite charSprite,
+            Sprite watchPortalSprite,
+            Sprite lampSprite)
+        {
+            GameObject shopRoot = new GameObject("RepairShop_Space");
+            Undo.RegisterCreatedObjectUndo(shopRoot, "Create RepairShop_Space");
+
+            // 수리점 실내 배경 캔버스
+            GameObject shopBg = new GameObject("RepairShopInterior");
+            shopBg.transform.SetParent(shopRoot.transform, false);
+            shopBg.transform.position = new Vector3(1.1f, 0.0f, 0f);
+            SpriteRenderer bgSr = shopBg.AddComponent<SpriteRenderer>();
+            bgSr.sprite = shopBgSprite;
+            bgSr.sortingOrder = -10;
+
+            CreateWorldLabel(shopRoot.transform, "『기억 수리점 공방』 — 의뢰인(시계공)과 대화 후 중앙 작업대의 [멈춘 회중시계]로 기억 공간에 입장하세요", new Vector3(1.1f, 3.4f, 0f), new Color(1f, 0.90f, 0.55f, 0.95f), 0.065f);
+
+            // 실내 조명 가로등 장식
+            CreateEnvironmentProp(shopRoot.transform, "ShopLamp_Left", new Vector3(-2.8f, 2.2f, 0f), lampSprite, 4);
+            CreateEnvironmentProp(shopRoot.transform, "ShopLamp_Right", new Vector3(5.0f, 2.2f, 0f), lampSprite, 4);
+
+            // 의뢰인 NPC: 시계공 노인 (의뢰 전 대사 & 기억 수리 완료 후 에필로그 대사 보유!)
+            GameObject clientNpc = new GameObject("NPC_Client_Clockmaker");
+            clientNpc.transform.SetParent(shopRoot.transform, false);
+            clientNpc.transform.position = new Vector3(-1.5f, 0.4f, 0f);
+            clientNpc.transform.localScale = new Vector3(1.0f, 1.0f, 1f);
+
+            SpriteRenderer npcSr = clientNpc.AddComponent<SpriteRenderer>();
+            npcSr.sprite = charSprite;
+            npcSr.color = new Color(1.0f, 0.78f, 0.38f, 1.0f);
+            npcSr.sortingOrder = 12;
+
+            CircleCollider2D npcCol = clientNpc.AddComponent<CircleCollider2D>();
+            npcCol.isTrigger = false;
+            npcCol.radius = 0.48f;
+
+            InteractableObject npcInteract = clientNpc.AddComponent<InteractableObject>();
+            npcInteract.SetupNPC(
+                "NPC_SHOP_CLOCKMAKER",
+                "의뢰인: 시계공 노인",
+                "DLG_SHOP_EP1",
+                new string[]
+                {
+                    "\"수리공 양반, 이 회중시계가 11시 55분에서 도통 움직이질 않네.\"",
+                    "\"그날 아침 9시에 내가 시계탑 문을 열고, 정오(12:00)에 시계탑 종을 정상적으로 울린 뒤에 딸을 배웅하러 갔는데 말이야...\"",
+                    "\"오른쪽 수리 작업대 위에 놓인 [멈춘 회중시계]를 조사해 내 기억 공간으로 들어가 수리해 주게!\""
+                },
+                new string[]
+                {
+                    "\"오오...! 11시 55분에 멈춰 있던 회중시계 태엽이 다시 힘차게 돌아가고 있어!\"",
+                    "\"맞아... 정오에 종을 울렸다는 건 내 착각이었어. 떠나는 딸의 기차를 붙잡고 싶어서 11시 55분에 내 손으로 태엽을 멈췄던 거였지.\"",
+                    "\"고맙네, 기억 수리공 양반! 덕분에 딸아이와의 가장 소중한 기억을 온전히 되찾았어! (Ep.1 클리어 완료!)\""
+                }
+            );
+            CreateWorldLabel(clientNpc.transform, "★ 의뢰인: 시계공 노인\n([E/Space] 대화)", new Vector3(0f, 0.82f, 0f), new Color(1f, 0.88f, 0.45f, 1f), 0.065f);
+
+            // 중앙 수리 작업대 위 '멈춘 회중시계 (기억 공간 입장 포털)'
+            CreatePortalObject(
+                shopRoot.transform,
+                "Portal_BrokenPocketWatch",
+                new Vector3(2.2f, 0.4f, 0f),
+                "PORTAL_TO_MEMORY_MAP",
+                "멈춘 회중시계 ([E/Space] 기억 공간 입장)",
+                FragmentUIManager.SpaceMemoryMap,
+                new Color(0.55f, 0.95f, 1.0f, 1.0f),
+                watchPortalSprite
+            );
+
+            // 공방 외벽 콜라이더
+            CreateInvisibleWall(shopRoot.transform, "ShopBound_Top", new Vector3(1.1f, 3.5f, 0f), new Vector2(11.2f, 0.5f));
+            CreateInvisibleWall(shopRoot.transform, "ShopBound_Bottom", new Vector3(1.1f, -3.5f, 0f), new Vector2(11.2f, 0.5f));
+            CreateInvisibleWall(shopRoot.transform, "ShopBound_Left", new Vector3(-4.1f, 0f, 0f), new Vector2(0.5f, 7.5f));
+            CreateInvisibleWall(shopRoot.transform, "ShopBound_Right", new Vector3(6.3f, 0f, 0f), new Vector2(0.5f, 7.5f));
+
+            return shopRoot;
+        }
+
+        private static void CreatePortalObject(
+            Transform parent,
+            string objectName,
+            Vector3 position,
+            string portalId,
+            string portalLabel,
+            string destinationSpaceId,
+            Color tintColor,
+            Sprite sprite)
+        {
+            GameObject portalObj = new GameObject(objectName);
+            portalObj.transform.SetParent(parent, false);
+            portalObj.transform.position = position;
+            portalObj.transform.localScale = new Vector3(1.05f, 1.05f, 1f);
+
+            SpriteRenderer sr = portalObj.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
+            sr.color = tintColor;
+            sr.sortingOrder = 12;
+
+            CircleCollider2D col = portalObj.AddComponent<CircleCollider2D>();
+            col.isTrigger = false;
+            col.radius = 0.5f;
+
+            InteractableObject interactable = portalObj.AddComponent<InteractableObject>();
+            interactable.SetupSpacePortal(portalId, portalLabel, destinationSpaceId);
+
+            CreateWorldLabel(portalObj.transform, $"◆ {portalLabel}", new Vector3(0f, 0.82f, 0f), tintColor, 0.065f);
+        }
+
         private static SpriteRenderer BuildDetailedTownEnvironment(
+            Transform parent,
             Sprite fullMapBgSprite,
             Sprite clocktowerSprite,
             Sprite treeSprite,
-            Sprite lampSprite,
-            Sprite squareSprite)
+            Sprite lampSprite)
         {
             GameObject roomRoot = new GameObject("RoomEnvironment");
-            Undo.RegisterCreatedObjectUndo(roomRoot, "Create RoomEnvironment");
+            roomRoot.transform.SetParent(parent, false);
 
-            // 1. 고해상도 전체 타운 배경 일러스트 캔버스 (11.2 x 8.0 월드 유닛)
-            // 위쪽: 시계탑 석조 광장과 황금 문양 바닥 / 가운데: 푸른 수로(강물) / 아래쪽: 잔디 정원과 조약돌 산책로
             GameObject mapCanvas = new GameObject("TownMapBackground");
             mapCanvas.transform.SetParent(roomRoot.transform, false);
             mapCanvas.transform.position = new Vector3(1.1f, 0.0f, 0f);
-            mapCanvas.transform.localScale = new Vector3(1f, 1f, 1f);
             SpriteRenderer mapSr = mapCanvas.AddComponent<SpriteRenderer>();
             mapSr.sprite = fullMapBgSprite;
             mapSr.color = Color.white;
             mapSr.sortingOrder = -10;
 
-            // 2. 위쪽 광장 중앙에 우뚝 솟은 고풍스러운 시계탑 오브젝트
             GameObject clocktower = new GameObject("Prop_GrandClocktower");
             clocktower.transform.SetParent(roomRoot.transform, false);
-            clocktower.transform.position = new Vector3(1.1f, 3.05f, 0f);
+            clocktower.transform.position = new Vector3(1.1f, 3.15f, 0f);
             SpriteRenderer towerSr = clocktower.AddComponent<SpriteRenderer>();
             towerSr.sprite = clocktowerSprite;
             towerSr.sortingOrder = 4;
             BoxCollider2D towerCol = clocktower.AddComponent<BoxCollider2D>();
             towerCol.size = new Vector2(1.2f, 0.9f);
 
-            // 3. 주변 환경 프롭 배치 (가로수 나무, 가로등)
             CreateEnvironmentProp(roomRoot.transform, "Tree_UpperLeft", new Vector3(-3.3f, 3.0f, 0f), treeSprite, 3);
             CreateEnvironmentProp(roomRoot.transform, "Tree_UpperRight", new Vector3(5.5f, 3.0f, 0f), treeSprite, 3);
             CreateEnvironmentProp(roomRoot.transform, "Tree_LowerLeft", new Vector3(-3.5f, -3.1f, 0f), treeSprite, 3);
@@ -261,13 +411,11 @@ namespace FragmentRPG.EditorTools
             CreateEnvironmentProp(roomRoot.transform, "Lamp_LowerLeft", new Vector3(-0.6f, -1.55f, 0f), lampSprite, 4);
             CreateEnvironmentProp(roomRoot.transform, "Lamp_LowerRight", new Vector3(2.8f, -1.55f, 0f), lampSprite, 4);
 
-            // 4. 외곽 경계 물리 콜라이더 벽 (투명 콜라이더로 자연스럽게 이동 범위 제한)
             CreateInvisibleWall(roomRoot.transform, "Bound_Top", new Vector3(1.1f, 3.95f, 0f), new Vector2(11.2f, 0.4f));
             CreateInvisibleWall(roomRoot.transform, "Bound_Bottom", new Vector3(1.1f, -3.95f, 0f), new Vector2(11.2f, 0.4f));
             CreateInvisibleWall(roomRoot.transform, "Bound_Left", new Vector3(-4.35f, 0f, 0f), new Vector2(0.4f, 8.2f));
             CreateInvisibleWall(roomRoot.transform, "Bound_Right", new Vector3(6.55f, 0f, 0f), new Vector2(0.4f, 8.2f));
 
-            // 강물(수로) 사이 틈새 막음 콜라이더 (복원된 다리 슬롯 1, 2, 3 위로만 건널 수 있게 설정)
             CreateInvisibleWall(roomRoot.transform, "RiverBank_LeftEdge", new Vector3(-3.95f, 0.15f, 0f), new Vector2(0.7f, 1.9f));
             CreateInvisibleWall(roomRoot.transform, "RiverBank_Mid1", new Vector3(-0.5f, 0.15f, 0f), new Vector2(0.35f, 1.9f));
             CreateInvisibleWall(roomRoot.transform, "RiverBank_Mid2", new Vector3(2.7f, 0.15f, 0f), new Vector2(0.35f, 1.9f));
@@ -310,7 +458,7 @@ namespace FragmentRPG.EditorTools
             GameObject slotObj = new GameObject(objectName);
             slotObj.transform.SetParent(parent, false);
             slotObj.transform.position = position;
-            slotObj.transform.localScale = Vector3.one; // 스프라이트 자체 크기가 2.8 x 2.0 월드 유닛
+            slotObj.transform.localScale = Vector3.one;
 
             SpriteRenderer sr = slotObj.AddComponent<SpriteRenderer>();
             sr.sprite = emptyVoidSprite;
@@ -321,7 +469,6 @@ namespace FragmentRPG.EditorTools
             col.isTrigger = false;
             col.size = new Vector2(2.75f, 1.9f);
 
-            // 복원 시 함께 나타나는 입체 장식 프롭
             GameObject restoredVisual = new GameObject("RestoredBackgroundDetail");
             restoredVisual.transform.SetParent(slotObj.transform, false);
             restoredVisual.transform.localPosition = new Vector3(-0.85f, 0.2f, 0f);
@@ -347,61 +494,90 @@ namespace FragmentRPG.EditorTools
             CreateWorldLabel(slotObj.transform, shortSlotLabel, Vector3.zero, new Color(1f, 0.78f, 0.78f, 0.95f), 0.065f);
         }
 
-        private static GameObject BuildPastMemoryScene(Sprite charSprite, Sprite crystalSprite)
+        /// <summary>
+        /// [1순위 핵심] 배경 복원 후 나타나는 과거의 기억 3장면(09:00 / 11:30 / 11:55)과
+        /// 중앙 '최종 기억 수리 제단(순서 맞추기 + 모순 찾기 퍼즐 호출)'
+        /// </summary>
+        private static GameObject BuildPastMemoryScene(Transform parent, Sprite charSprite, Sprite crystalSprite)
         {
             GameObject memoryRoot = new GameObject("PastMemoryScene");
-            Undo.RegisterCreatedObjectUndo(memoryRoot, "Create PastMemoryScene");
+            memoryRoot.transform.SetParent(parent, false);
 
-            // 과거의 기억 인물 1: 과거의 시계공
+            // 과거의 기억 장면 1 (오전 09:00)
             CreateMemoryNPC(
                 memoryRoot.transform,
-                "Memory_Clockmaker",
-                new Vector3(-1.2f, 2.15f, 0f),
-                "MEM_NPC_01",
-                "과거의 시계공",
-                "DLG_PAST_01",
+                "Memory_0900_Morning",
+                new Vector3(-2.1f, 2.15f, 0f),
+                "MEM_NPC_0900",
+                "과거 기억 [09:00]",
+                "DLG_PAST_0900",
                 new string[]
                 {
-                    "\"드디어 이 시계탑 광장 다리가 모두 이어졌구나.\"",
-                    "\"네가 기차를 타고 떠나기 전에, 우리가 함께 걸었던 이 가로등길과 벚꽃 벤치를 꼭 기억해 주렴.\""
+                    "[과거의 기억 — 오전 09:00] 아침 햇살 속에서 시계공이 시계탑 문을 활짝 열고 하루의 태엽을 감기 시작했습니다.",
+                    "시계공: \"오늘도 정오에 정확한 종소리를 울려야지.\""
                 },
-                new Color(1.0f, 0.86f, 0.42f, 0.95f),
+                new Color(1.0f, 0.88f, 0.42f, 0.95f),
                 charSprite
             );
 
-            // 과거의 기억 인물 2: 과거의 아이
+            // 과거의 기억 장면 2 (오전 11:30)
             CreateMemoryNPC(
                 memoryRoot.transform,
-                "Memory_Child",
-                new Vector3(3.4f, 2.15f, 0f),
-                "MEM_NPC_02",
-                "과거의 아이",
-                "DLG_PAST_02",
+                "Memory_1130_Letter",
+                new Vector3(4.3f, 2.15f, 0f),
+                "MEM_NPC_1130",
+                "과거 기억 [11:30]",
+                "DLG_PAST_1130",
                 new string[]
                 {
-                    "\"고마워요, 할아버지! 할아버지가 주신 이 회중시계를 평생 소중히 간직할게요!\"",
-                    "\"비어 있던 배경이 모두 이어져서 드디어 그날의 따뜻한 기억이 온전히 되살아났어요!\""
+                    "[과거의 기억 — 오전 11:30] 시계공이 작업대 위에서 '정오(12:00) 기차로 멀리 떠난다'는 딸의 편지를 뒤늦게 발견했습니다!",
+                    "시계공: \"정오 기차라니...! 지금 당장 가지 않으면 딸아이를 영영 배웅하지 못해!\""
                 },
                 new Color(0.65f, 0.95f, 1.0f, 0.95f),
                 charSprite
             );
 
-            // 중앙 기억의 결정체
+            // 과거의 기억 장면 3 (오전 11:55 - 결정적 모순 단서!)
             CreateMemoryNPC(
                 memoryRoot.transform,
-                "Memory_CoreCrystal",
-                new Vector3(1.1f, 2.0f, 0f),
-                "MEM_CORE",
-                "복원된 기억의 결정체",
-                "DLG_PAST_CORE",
+                "Memory_1155_StopPin",
+                new Vector3(-0.5f, 1.85f, 0f),
+                "MEM_NPC_1155",
+                "과거 기억 [11:55]",
+                "DLG_PAST_1155",
                 new string[]
                 {
-                    "[과거의 기억 재생 완료] 기억조각 1, 2, 3으로 복원된 시계탑 광장에서 두 사람의 마지막 인사가 따뜻하게 울려 퍼집니다.",
-                    "축하합니다! 첫 번째 퍼즐맵의 배경 복원과 과거의 기억 관람을 완수했습니다!"
+                    "[과거의 기억 — 오전 11:55] 정오가 되기 5분 전, 시계공은 딸이 탄 기차가 떠나지 않기를 바라며 스스로 시계탑 주 태엽에 '멈춤핀'을 꽂아 시계를 멈춰 세웠습니다!",
+                    "(단서 발견: 시계공은 정오에 종을 울린 적이 없으며, 11시 55분에 스스로 시계를 멈췄습니다!)"
                 },
-                new Color(0.55f, 1.0f, 0.78f, 1.0f),
-                crystalSprite
+                new Color(1.0f, 0.62f, 0.88f, 0.95f),
+                charSprite
             );
+
+            // 중앙 최종 기억 수리 제단 (퍼즐 ① 기억 순서 맞추기 -> 퍼즐 ② 잘못된 기억 찾기 연속 호출!)
+            GameObject altarObj = new GameObject("Altar_FinalMemoryRepair");
+            altarObj.transform.SetParent(memoryRoot.transform, false);
+            altarObj.transform.position = new Vector3(1.8f, 1.95f, 0f);
+            altarObj.transform.localScale = new Vector3(1.1f, 1.1f, 1f);
+
+            SpriteRenderer altarSr = altarObj.AddComponent<SpriteRenderer>();
+            altarSr.sprite = crystalSprite;
+            altarSr.color = new Color(0.50f, 1.0f, 0.78f, 1.0f);
+            altarSr.sortingOrder = 14;
+
+            CircleCollider2D altarCol = altarObj.AddComponent<CircleCollider2D>();
+            altarCol.isTrigger = false;
+            altarCol.radius = 0.52f;
+
+            InteractableObject altarInteract = altarObj.AddComponent<InteractableObject>();
+            altarInteract.SetupPuzzleTrigger(
+                "ALTAR_EP1_FINAL",
+                "기억 수리 제단 (① 순서 맞추기 & ② 모순 찾기)",
+                PuzzleManager.OrderPuzzleId,
+                PuzzleType.ChronologicalOrder
+            );
+
+            CreateWorldLabel(altarObj.transform, "★ [기억 수리 제단]\n([E/Space] 최종 퍼즐 풀기)", new Vector3(0f, 0.82f, 0f), new Color(0.50f, 1.0f, 0.78f, 1f), 0.065f);
 
             return memoryRoot;
         }
@@ -450,7 +626,7 @@ namespace FragmentRPG.EditorTools
             GameObject npcObj = new GameObject(objectName);
             npcObj.transform.SetParent(parent, false);
             npcObj.transform.position = position;
-            npcObj.transform.localScale = new Vector3(0.95f, 0.95f, 1f);
+            npcObj.transform.localScale = new Vector3(0.92f, 0.92f, 1f);
 
             SpriteRenderer sr = npcObj.AddComponent<SpriteRenderer>();
             sr.sprite = sprite;
@@ -495,6 +671,8 @@ namespace FragmentRPG.EditorTools
 
         private static void BuildPuzzleMapUICanvas(
             FragmentUIManager uiMgr,
+            GameObject repairShopRoot,
+            GameObject memoryMapRoot,
             GameObject pastMemoryRoot,
             SpriteRenderer mainFloorSr)
         {
@@ -526,40 +704,57 @@ namespace FragmentRPG.EditorTools
             scaler.referenceResolution = new Vector2(1280f, 720f);
             canvasObj.AddComponent<GraphicRaycaster>();
 
+            // 상단 바 (현재 공간 표시 + 거점/기억공간 이동 버튼 + 리셋 버튼)
             GameObject topBar = CreateUIPanel(canvasObj.transform, "TopBar", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -46f), Vector2.zero, new Color(0.07f, 0.09f, 0.14f, 0.94f));
-            Text headerTitleText = CreateUIText(topBar.transform, "HeaderTitleText", "[Fragment RPG 퍼즐맵] 기억조각 1, 2, 3을 모아 비어진 배경에 알맞게 끼워 넣으세요!", defaultFont, 15, TextAnchor.MiddleLeft, Color.white, new Vector2(0f, 0f), new Vector2(0.86f, 1f), new Vector2(18f, 0f), Vector2.zero);
+            Text headerTitleText = CreateUIText(topBar.transform, "HeaderTitleText", "[거점: 기억 수리점 공방]", defaultFont, 14, TextAnchor.MiddleLeft, Color.white, new Vector2(0f, 0f), new Vector2(0.64f, 1f), new Vector2(16f, 0f), Vector2.zero);
 
-            GameObject resetBtnObj = CreateUIPanel(topBar.transform, "Btn_ResetMap", new Vector2(0.87f, 0.15f), new Vector2(0.985f, 0.85f), Vector2.zero, Vector2.zero, new Color(0.55f, 0.25f, 0.25f, 1f));
+            GameObject shopBtnObj = CreateUIPanel(topBar.transform, "Btn_GoShop", new Vector2(0.65f, 0.15f), new Vector2(0.755f, 0.85f), Vector2.zero, Vector2.zero, new Color(0.38f, 0.28f, 0.18f, 1f));
+            Button shopBtn = shopBtnObj.AddComponent<Button>();
+            shopBtn.targetGraphic = shopBtnObj.GetComponent<Image>();
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(shopBtn.onClick, uiMgr.EnterRepairShop);
+            CreateUIText(shopBtnObj.transform, "Text", "거점: 기억 수리점", defaultFont, 12, TextAnchor.MiddleCenter, Color.white, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+
+            GameObject mapBtnObj = CreateUIPanel(topBar.transform, "Btn_GoMemoryMap", new Vector2(0.765f, 0.15f), new Vector2(0.87f, 0.85f), Vector2.zero, Vector2.zero, new Color(0.20f, 0.36f, 0.56f, 1f));
+            Button mapBtn = mapBtnObj.AddComponent<Button>();
+            mapBtn.targetGraphic = mapBtnObj.GetComponent<Image>();
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(mapBtn.onClick, uiMgr.EnterMemoryMap);
+            CreateUIText(mapBtnObj.transform, "Text", "기억 공간: 퍼즐맵", defaultFont, 12, TextAnchor.MiddleCenter, Color.white, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+
+            GameObject resetBtnObj = CreateUIPanel(topBar.transform, "Btn_ResetMap", new Vector2(0.88f, 0.15f), new Vector2(0.985f, 0.85f), Vector2.zero, Vector2.zero, new Color(0.55f, 0.25f, 0.25f, 1f));
             Button resetBtn = resetBtnObj.AddComponent<Button>();
             resetBtn.targetGraphic = resetBtnObj.GetComponent<Image>();
             UnityEditor.Events.UnityEventTools.AddPersistentListener(resetBtn.onClick, uiMgr.ResetPuzzleMap);
-            CreateUIText(resetBtnObj.transform, "Text", "퍼즐 처음부터", defaultFont, 13, TextAnchor.MiddleCenter, Color.white, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            CreateUIText(resetBtnObj.transform, "Text", "처음부터 리셋", defaultFont, 12, TextAnchor.MiddleCenter, Color.white, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
+            // 좌측 인벤토리 및 3대 퍼즐 체크리스트 현황판
             GameObject leftPanel = CreateUIPanel(canvasObj.transform, "InventoryPanel", new Vector2(0f, 0.26f), new Vector2(0.21f, 0.91f), new Vector2(10f, 0f), Vector2.zero, new Color(0.08f, 0.11f, 0.18f, 0.88f));
-            Text inventoryText = CreateUIText(leftPanel.transform, "InventoryStatusText", "[보유 아이템 — 기억조각]", defaultFont, 13, TextAnchor.UpperLeft, Color.white, Vector2.zero, Vector2.one, new Vector2(10f, 10f), new Vector2(-10f, -10f));
+            Text inventoryText = CreateUIText(leftPanel.transform, "InventoryStatusText", "[진행 현황]", defaultFont, 13, TextAnchor.UpperLeft, Color.white, Vector2.zero, Vector2.one, new Vector2(10f, 10f), new Vector2(-10f, -10f));
 
+            // 하단 상호작용 안내 프롬프트
             GameObject promptBar = CreateUIPanel(canvasObj.transform, "PromptBar", new Vector2(0.23f, 0.015f), new Vector2(0.98f, 0.07f), Vector2.zero, Vector2.zero, new Color(0.07f, 0.09f, 0.14f, 0.90f));
-            Text promptText = CreateUIText(promptBar.transform, "PromptText", "맵 아래쪽에서 [기억조각 1, 2, 3]을 줍고, 가운데 [비어진 배경 1, 2, 3]에 다가가 [E] 또는 [Space]를 누르세요.", defaultFont, 14, TextAnchor.MiddleCenter, new Color(1f, 0.92f, 0.35f, 1f), Vector2.zero, Vector2.one, new Vector2(10f, 0f), new Vector2(-10f, 0f));
+            Text promptText = CreateUIText(promptBar.transform, "PromptText", "상호작용 안내", defaultFont, 14, TextAnchor.MiddleCenter, new Color(1f, 0.92f, 0.35f, 1f), Vector2.zero, Vector2.one, new Vector2(10f, 0f), new Vector2(-10f, 0f));
 
-            GameObject dialogPanel = CreateUIPanel(canvasObj.transform, "DialogPanel", new Vector2(0.23f, 0.08f), new Vector2(0.98f, 0.21f), Vector2.zero, Vector2.zero, new Color(0.10f, 0.13f, 0.22f, 0.95f));
+            // 하단 대화창
+            GameObject dialogPanel = CreateUIPanel(canvasObj.transform, "DialogPanel", new Vector2(0.23f, 0.08f), new Vector2(0.98f, 0.22f), Vector2.zero, Vector2.zero, new Color(0.10f, 0.13f, 0.22f, 0.95f));
             Text dialogSpeakerText = CreateUIText(dialogPanel.transform, "DialogSpeakerText", "알림", defaultFont, 15, TextAnchor.MiddleLeft, new Color(1f, 0.85f, 0.3f, 1f), new Vector2(0f, 0.64f), new Vector2(1f, 1f), new Vector2(14f, 0f), new Vector2(-14f, -2f));
             Text dialogBodyText = CreateUIText(dialogPanel.transform, "DialogBodyText", "내용", defaultFont, 14, TextAnchor.UpperLeft, Color.white, new Vector2(0f, 0f), new Vector2(1f, 0.64f), new Vector2(14f, 4f), new Vector2(-14f, -2f));
             dialogPanel.SetActive(false);
 
-            GameObject slotChoicePanel = CreateUIPanel(canvasObj.transform, "SlotChoicePanel", new Vector2(0.28f, 0.26f), new Vector2(0.95f, 0.88f), Vector2.zero, Vector2.zero, new Color(0.09f, 0.12f, 0.20f, 0.97f));
-            Text choiceTitle = CreateUIText(slotChoicePanel.transform, "ChoiceTitleText", "비어진 배경에 기억조각 넣기", defaultFont, 18, TextAnchor.MiddleCenter, new Color(1f, 0.88f, 0.35f, 1f), new Vector2(0f, 0.84f), new Vector2(1f, 0.98f), new Vector2(16f, 0f), new Vector2(-16f, 0f));
-            Text choiceDesc = CreateUIText(slotChoicePanel.transform, "ChoiceDescText", "이 빈칸에 알맞은 기억조각을 선택하세요.", defaultFont, 14, TextAnchor.MiddleCenter, new Color(0.85f, 0.9f, 1f, 1f), new Vector2(0f, 0.72f), new Vector2(1f, 0.84f), new Vector2(16f, 0f), new Vector2(-16f, 0f));
-            Text choiceResult = CreateUIText(slotChoicePanel.transform, "ChoiceResultText", "조각 버튼을 눌러 배경을 복원하세요.", defaultFont, 15, TextAnchor.MiddleCenter, Color.cyan, new Vector2(0f, 0.58f), new Vector2(1f, 0.72f), new Vector2(16f, 0f), new Vector2(-16f, 0f));
+            // 중앙 퍼즐 모달 창 (③ 배경 조각 끼우기 / ① 기억 순서 맞추기 / ② 잘못된 기억 찾기 공용)
+            GameObject slotChoicePanel = CreateUIPanel(canvasObj.transform, "SlotChoicePanel", new Vector2(0.26f, 0.24f), new Vector2(0.96f, 0.89f), Vector2.zero, Vector2.zero, new Color(0.09f, 0.12f, 0.20f, 0.98f));
+            Text choiceTitle = CreateUIText(slotChoicePanel.transform, "ChoiceTitleText", "퍼즐 제목", defaultFont, 17, TextAnchor.MiddleCenter, new Color(1f, 0.88f, 0.35f, 1f), new Vector2(0f, 0.85f), new Vector2(1f, 0.98f), new Vector2(16f, 0f), new Vector2(-16f, 0f));
+            Text choiceDesc = CreateUIText(slotChoicePanel.transform, "ChoiceDescText", "퍼즐 설명", defaultFont, 13, TextAnchor.MiddleCenter, new Color(0.85f, 0.9f, 1f, 1f), new Vector2(0f, 0.72f), new Vector2(1f, 0.85f), new Vector2(16f, 0f), new Vector2(-16f, 0f));
+            Text choiceResult = CreateUIText(slotChoicePanel.transform, "ChoiceResultText", "퍼즐 상태", defaultFont, 14, TextAnchor.MiddleCenter, Color.cyan, new Vector2(0f, 0.59f), new Vector2(1f, 0.72f), new Vector2(16f, 0f), new Vector2(-16f, 0f));
 
             GameObject btnContainer = new GameObject("ChoiceButtonContainer");
             btnContainer.transform.SetParent(slotChoicePanel.transform, false);
             RectTransform containerRt = btnContainer.AddComponent<RectTransform>();
-            containerRt.anchorMin = new Vector2(0.08f, 0.06f);
-            containerRt.anchorMax = new Vector2(0.92f, 0.56f);
+            containerRt.anchorMin = new Vector2(0.06f, 0.05f);
+            containerRt.anchorMax = new Vector2(0.94f, 0.57f);
             containerRt.offsetMin = Vector2.zero;
             containerRt.offsetMax = Vector2.zero;
             VerticalLayoutGroup vlg = btnContainer.AddComponent<VerticalLayoutGroup>();
-            vlg.spacing = 8f;
+            vlg.spacing = 6f;
             vlg.childControlWidth = true;
             vlg.childControlHeight = true;
             vlg.childForceExpandWidth = true;
@@ -579,6 +774,8 @@ namespace FragmentRPG.EditorTools
                 choiceDesc,
                 choiceResult,
                 btnContainer.transform,
+                repairShopRoot,
+                memoryMapRoot,
                 pastMemoryRoot,
                 mainFloorSr
             );
@@ -619,9 +816,6 @@ namespace FragmentRPG.EditorTools
             return txt;
         }
 
-        // =====================================================================
-        // 고해상도 프로시저럴 2D 배경 & 퍼즐 조각 & 오브젝트 아트 생성기
-        // =====================================================================
         private static void EnsureRichArtSprites()
         {
             if (!Directory.Exists(SpriteFolder))
@@ -629,6 +823,7 @@ namespace FragmentRPG.EditorTools
                 Directory.CreateDirectory(SpriteFolder);
             }
 
+            GenerateRepairShopInteriorCanvas($"{SpriteFolder}/Spr_RepairShopCanvas.png");
             GenerateFullTownBackgroundCanvas($"{SpriteFolder}/Spr_FullMapCanvas.png");
             GenerateVoidSlotSprite($"{SpriteFolder}/Spr_VoidSlot.png");
             GenerateRestoredSlotSprite($"{SpriteFolder}/Spr_Restored_Left.png", 1);
@@ -643,6 +838,7 @@ namespace FragmentRPG.EditorTools
 
             AssetDatabase.Refresh();
 
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_RepairShopCanvas.png", 48f, FilterMode.Point);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_FullMapCanvas.png", 48f, FilterMode.Point);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_VoidSlot.png", 48f, FilterMode.Bilinear);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Restored_Left.png", 48f, FilterMode.Point);
@@ -657,16 +853,98 @@ namespace FragmentRPG.EditorTools
         }
 
         /// <summary>
-        /// 전체 맵 배경(528 x 384 px, PPU 48 -> 11.0 x 8.0 월드 유닛):
-        /// 외곽 성벽 테두리, 아래쪽 잔디 정원과 조약돌 산책로, 가운데 흐르는 푸른 수로(강물), 위쪽 시계탑 석조 광장과 황금 시계 문양 바닥을 그립니다.
+        /// [2순위] 거점 '기억 수리점 공방' 실내 배경 생성 (528 x 384 px, PPU 48):
+        /// 따뜻한 원목 마룻바닥, 앤티크 붉은 양탄자, 상단 고서적 책장/벽시계 선반, 중앙 수리 작업대 테이블을 그립니다.
         /// </summary>
-        private static void GenerateFullTownBackgroundCanvas(string path)
+        private static void GenerateRepairShopInteriorCanvas(string path)
         {
             int w = 528;
             int h = 384;
             Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
 
-            // 수로(강물) Y 구간: 중심(y=192) 근처 156 ~ 244 구간
+            for (int y = 0; y < h; y++)
+            {
+                for (int x = 0; x < w; x++)
+                {
+                    // 외곽 공방 나무 벽 테두리
+                    if (x < 18 || x >= w - 18 || y < 18 || y >= h - 18)
+                    {
+                        bool beam = (x % 32 == 0) || (y % 32 == 0);
+                        tex.SetPixel(x, y, beam ? new Color(0.18f, 0.12f, 0.08f, 1f) : new Color(0.28f, 0.19f, 0.12f, 1f));
+                        continue;
+                    }
+
+                    // 상단 벽면 & 책장 선반 구역 (y >= 296)
+                    if (y >= 296)
+                    {
+                        bool shelf = (y % 22 < 4);
+                        if (shelf)
+                        {
+                            tex.SetPixel(x, y, new Color(0.35f, 0.22f, 0.12f, 1f));
+                        }
+                        else if (x >= 60 && x <= w - 60 && (x % 14 < 10))
+                        {
+                            // 알록달록한 기억 보관병 & 고서적 책등
+                            int bookTone = (x / 14 + y / 22) % 4;
+                            Color bookCol = bookTone == 0 ? new Color(0.65f, 0.25f, 0.25f, 1f) :
+                                            bookTone == 1 ? new Color(0.25f, 0.48f, 0.62f, 1f) :
+                                            bookTone == 2 ? new Color(0.28f, 0.55f, 0.36f, 1f) :
+                                                            new Color(0.75f, 0.62f, 0.28f, 1f);
+                            tex.SetPixel(x, y, bookCol);
+                        }
+                        else
+                        {
+                            tex.SetPixel(x, y, new Color(0.22f, 0.16f, 0.12f, 1f));
+                        }
+                        continue;
+                    }
+
+                    // 중앙 수리 작업대 카운터 테이블 (x: 300~410, y: 185~235)
+                    if (x >= 300 && x <= 410 && y >= 185 && y <= 235)
+                    {
+                        bool tableBorder = (x < 305 || x > 405 || y < 190 || y > 230);
+                        tex.SetPixel(x, y, tableBorder ? new Color(0.32f, 0.20f, 0.10f, 1f) : new Color(0.52f, 0.35f, 0.20f, 1f));
+                        continue;
+                    }
+
+                    // 중앙 앤티크 자수 카펫 러그 (x: 110~418, y: 80~255)
+                    if (x >= 110 && x <= 418 && y >= 80 && y <= 255)
+                    {
+                        bool rugBorder = (x < 120 || x > 408 || y < 90 || y > 245);
+                        if (rugBorder)
+                        {
+                            tex.SetPixel(x, y, new Color(0.85f, 0.72f, 0.32f, 1f)); // 황금 자수 테두리
+                        }
+                        else
+                        {
+                            bool pattern = ((x + y) % 16 == 0) || ((x - y + 512) % 16 == 0);
+                            tex.SetPixel(x, y, pattern ? new Color(0.48f, 0.20f, 0.24f, 1f) : new Color(0.38f, 0.15f, 0.19f, 1f));
+                        }
+                        continue;
+                    }
+
+                    // 따뜻한 오크 원목 마룻바닥 패턴
+                    bool plankLine = (y % 16 == 0) || ((x + (y / 16) * 28) % 56 == 0);
+                    float grain = ((x * 5 + y * 9) % 13) * 0.005f;
+                    Color woodFloor = plankLine
+                        ? new Color(0.22f, 0.15f, 0.10f, 1f)
+                        : new Color(0.34f + grain, 0.24f + grain, 0.16f + grain, 1f);
+                    tex.SetPixel(x, y, woodFloor);
+                }
+            }
+
+            tex.Apply();
+            File.WriteAllBytes(path, tex.EncodeToPNG());
+            Object.DestroyImmediate(tex);
+        }
+
+        private static void GenerateFullTownBackgroundCanvas(string path)
+        {
+            if (File.Exists(path)) return;
+
+            int w = 528;
+            int h = 384;
+            Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
             int riverMinY = 152;
             int riverMaxY = 248;
 
@@ -674,7 +952,6 @@ namespace FragmentRPG.EditorTools
             {
                 for (int x = 0; x < w; x++)
                 {
-                    // 1. 외곽 석조 성벽 테두리 (두께 16px)
                     if (x < 16 || x >= w - 16 || y < 16 || y >= h - 16)
                     {
                         bool mortar = (y % 12 == 0) || ((x + (y / 12) * 16) % 28 == 0);
@@ -687,33 +964,28 @@ namespace FragmentRPG.EditorTools
                         continue;
                     }
 
-                    // 2. 가운데 수로(강물) 및 석조 강둑 난간
                     if (y >= riverMinY && y <= riverMaxY)
                     {
                         if (y < riverMinY + 8 || y > riverMaxY - 8)
                         {
-                            // 석조 강둑 테두리
                             bool stoneJoint = (x % 24 == 0);
                             tex.SetPixel(x, y, stoneJoint ? new Color(0.25f, 0.28f, 0.36f, 1f) : new Color(0.45f, 0.50f, 0.60f, 1f));
                         }
                         else
                         {
-                            // 흐르는 강물 물결 패턴
                             float wave = Mathf.Sin((x * 0.08f) + (y * 0.15f)) * 0.5f + 0.5f;
                             Color waterCol = Color.Lerp(new Color(0.10f, 0.28f, 0.48f, 1f), new Color(0.18f, 0.44f, 0.68f, 1f), wave);
                             if ((x + y * 2) % 37 == 0 && wave > 0.7f)
                             {
-                                waterCol = new Color(0.45f, 0.75f, 0.95f, 1f); // 물결 반짝임
+                                waterCol = new Color(0.45f, 0.75f, 0.95f, 1f);
                             }
                             tex.SetPixel(x, y, waterCol);
                         }
                         continue;
                     }
 
-                    // 3. 아래쪽 구역 (잔디 정원 + 3갈래 조약돌 산책로)
                     if (y < riverMinY)
                     {
-                        // 왼쪽(x=110), 중앙(x=264), 오른쪽(x=418)으로 이어지는 산책로 + 가로 연결 길(y=65~105)
                         bool onLeftPath = Mathf.Abs(x - 110) < 38 && y >= 65;
                         bool onCenterPath = Mathf.Abs(x - 264) < 42 && y >= 45;
                         bool onRightPath = Mathf.Abs(x - 418) < 38 && y >= 65;
@@ -721,7 +993,6 @@ namespace FragmentRPG.EditorTools
 
                         if (onLeftPath || onCenterPath || onRightPath || onCrossPath)
                         {
-                            // 조약돌 포장도로 질감
                             int brickX = x + ((y / 14) % 2) * 11;
                             bool joint = (y % 14 == 0) || (brickX % 22 == 0);
                             float shade = ((x * 7 + y * 13) % 17) * 0.004f;
@@ -732,23 +1003,21 @@ namespace FragmentRPG.EditorTools
                         }
                         else
                         {
-                            // 밤하늘 아래 푸른 잔디밭 + 꽃송이 디테일
                             float grassNoise = ((x * 19 + y * 31) % 23) / 23f;
                             Color grass = Color.Lerp(new Color(0.14f, 0.30f, 0.24f, 1f), new Color(0.19f, 0.38f, 0.30f, 1f), grassNoise);
                             if ((x * 11 + y * 29) % 197 == 0)
                             {
-                                grass = new Color(0.95f, 0.85f, 0.35f, 1f); // 작은 노란 야생화
+                                grass = new Color(0.95f, 0.85f, 0.35f, 1f);
                             }
                             else if ((x * 23 + y * 17) % 241 == 0)
                             {
-                                grass = new Color(0.95f, 0.55f, 0.80f, 1f); // 작은 분홍 꽃
+                                grass = new Color(0.95f, 0.55f, 0.80f, 1f);
                             }
                             tex.SetPixel(x, y, grass);
                         }
                         continue;
                     }
 
-                    // 4. 위쪽 구역 (고풍스러운 시계탑 석조 광장 + 황금 시계 다이얼 문양)
                     if (y > riverMaxY)
                     {
                         float cx = 264f;
@@ -763,7 +1032,6 @@ namespace FragmentRPG.EditorTools
                                 ? new Color(0.24f, 0.26f, 0.36f, 1f)
                                 : new Color(0.33f, 0.36f, 0.48f, 1f);
 
-                            // 광장 바닥의 황금 시계 마법진 링 문양
                             if (Mathf.Abs(dist - 52f) < 2.2f || Mathf.Abs(dist - 36f) < 1.8f)
                             {
                                 plazaCol = new Color(0.78f, 0.66f, 0.32f, 1f);
@@ -784,12 +1052,9 @@ namespace FragmentRPG.EditorTools
             Object.DestroyImmediate(tex);
         }
 
-        /// <summary>
-        /// 비어진 배경 슬롯(132 x 96 px, PPU 48 -> 2.75 x 2.0 월드 유닛):
-        /// 기억이 뜯겨 나간 심연의 보랏빛 균열 구멍과 황금 점선 퍼즐 테두리를 그립니다.
-        /// </summary>
         private static void GenerateVoidSlotSprite(string path)
         {
+            if (File.Exists(path)) return;
             int w = 132;
             int h = 96;
             Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
@@ -807,13 +1072,11 @@ namespace FragmentRPG.EditorTools
                         continue;
                     }
 
-                    // 심연 소용돌이 및 별빛 입자
                     float nx = (x - w * 0.5f) / (w * 0.5f);
                     float ny = (y - h * 0.5f) / (h * 0.5f);
                     float r = Mathf.Sqrt(nx * nx + ny * ny);
                     Color voidCol = Color.Lerp(new Color(0.05f, 0.04f, 0.11f, 0.98f), new Color(0.14f, 0.09f, 0.24f, 0.96f), Mathf.Clamp01(r));
 
-                    // 균열 번개선 느낌
                     if (Mathf.Abs((y - h * 0.5f) - Mathf.Sin(x * 0.12f) * 14f) < 1.2f)
                     {
                         voidCol = new Color(0.45f, 0.28f, 0.68f, 0.9f);
@@ -832,12 +1095,9 @@ namespace FragmentRPG.EditorTools
             Object.DestroyImmediate(tex);
         }
 
-        /// <summary>
-        /// 복원된 배경 퍼즐 조각 스프라이트(132 x 96 px, PPU 48):
-        /// 강물 위로 놓인 다리, 난간, 꽃밭/시계문양/벚꽃벤치가 직접 그려진 배경 타일을 생성합니다.
-        /// </summary>
         private static void GenerateRestoredSlotSprite(string path, int slotType)
         {
+            if (File.Exists(path)) return;
             int w = 132;
             int h = 96;
             Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
@@ -846,20 +1106,17 @@ namespace FragmentRPG.EditorTools
             {
                 for (int x = 0; x < w; x++)
                 {
-                    // 퍼즐 조각 완성 골드 테두리 (1px 은은한 빛)
                     if (x == 0 || x == w - 1 || y == 0 || y == h - 1)
                     {
                         tex.SetPixel(x, y, new Color(0.95f, 0.85f, 0.45f, 0.85f));
                         continue;
                     }
 
-                    // 중앙을 세로로 가로지르는 다리 폭 (x: 26 ~ 106)
                     bool onBridge = (x >= 24 && x <= w - 24);
                     bool onBridgeRail = (x >= 20 && x < 24) || (x > w - 24 && x <= w - 20);
 
                     if (onBridgeRail)
                     {
-                        // 다리 난간 기둥
                         bool post = (y % 18 < 6);
                         tex.SetPixel(x, y, post ? new Color(0.78f, 0.72f, 0.58f, 1f) : new Color(0.52f, 0.48f, 0.42f, 1f));
                         continue;
@@ -867,7 +1124,7 @@ namespace FragmentRPG.EditorTools
 
                     if (onBridge)
                     {
-                        if (slotType == 1) // 왼쪽: 따뜻한 목조 산책로 다리 & 가로등 불빛
+                        if (slotType == 1)
                         {
                             bool plank = (y % 8 == 0);
                             Color wood = plank ? new Color(0.32f, 0.22f, 0.14f, 1f) : new Color(0.52f, 0.36f, 0.22f, 1f);
@@ -878,11 +1135,10 @@ namespace FragmentRPG.EditorTools
                             }
                             tex.SetPixel(x, y, wood);
                         }
-                        else if (slotType == 2) // 중앙: 시계탑 황금 문양 대리석 다리
+                        else if (slotType == 2)
                         {
                             bool marbleGrid = (y % 12 == 0) || (x % 16 == 0);
                             Color marble = marbleGrid ? new Color(0.35f, 0.42f, 0.48f, 1f) : new Color(0.52f, 0.60f, 0.66f, 1f);
-                            // 중앙 황금 레드카펫 러그
                             if (x >= 48 && x <= w - 48)
                             {
                                 marble = (x == 48 || x == w - 48)
@@ -891,25 +1147,23 @@ namespace FragmentRPG.EditorTools
                             }
                             tex.SetPixel(x, y, marble);
                         }
-                        else // 오른쪽: 벚꽃잎이 흩날리는 돌다리와 원목 벤치
+                        else
                         {
                             bool stone = (y % 10 == 0) || ((x + (y / 10) * 8) % 16 == 0);
                             Color pathCol = stone ? new Color(0.34f, 0.28f, 0.38f, 1f) : new Color(0.50f, 0.42f, 0.54f, 1f);
-                            // 오른쪽 벤치 그림 (x: 78~98, y: 36~64)
                             if (x >= 78 && x <= 98 && y >= 36 && y <= 64)
                             {
                                 pathCol = (y % 6 == 0) ? new Color(0.35f, 0.20f, 0.12f, 1f) : new Color(0.62f, 0.38f, 0.22f, 1f);
                             }
                             else if ((x * 17 + y * 29) % 43 == 0)
                             {
-                                pathCol = new Color(1.0f, 0.68f, 0.86f, 1f); // 떨어진 벚꽃잎
+                                pathCol = new Color(1.0f, 0.68f, 0.86f, 1f);
                             }
                             tex.SetPixel(x, y, pathCol);
                         }
                     }
                     else
                     {
-                        // 다리 양옆의 복원된 맑은 강물
                         float wave = Mathf.Sin((x * 0.1f) + (y * 0.15f)) * 0.5f + 0.5f;
                         Color water = Color.Lerp(new Color(0.14f, 0.38f, 0.62f, 1f), new Color(0.24f, 0.56f, 0.80f, 1f), wave);
                         tex.SetPixel(x, y, water);
@@ -922,11 +1176,9 @@ namespace FragmentRPG.EditorTools
             Object.DestroyImmediate(tex);
         }
 
-        /// <summary>
-        /// 실제 직소 퍼즐 조각(Jigsaw Puzzle Piece) 모양 아이콘 생성 (64 x 64 px)
-        /// </summary>
         private static void GeneratePuzzlePieceSprite(string path)
         {
+            if (File.Exists(path)) return;
             int size = 64;
             Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             float c = 31.5f;
@@ -957,11 +1209,9 @@ namespace FragmentRPG.EditorTools
             Object.DestroyImmediate(tex);
         }
 
-        /// <summary>
-        /// 2D Top-down RPG 캐릭터(머리, 모자/머리카락, 눈, 코트/망토) 스프라이트 생성 (64 x 64 px)
-        /// </summary>
         private static void GenerateCharacterSprite(string path)
         {
+            if (File.Exists(path)) return;
             int size = 64;
             Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             float cx = 31.5f;
@@ -978,19 +1228,19 @@ namespace FragmentRPG.EditorTools
                     {
                         if (headDist >= 10.8f)
                         {
-                            tex.SetPixel(x, y, new Color(0.15f, 0.18f, 0.25f, 1f)); // 외곽선
+                            tex.SetPixel(x, y, new Color(0.15f, 0.18f, 0.25f, 1f));
                         }
                         else if (y >= 43)
                         {
-                            tex.SetPixel(x, y, new Color(0.75f, 0.82f, 0.95f, 1f)); // 모자/머리카락
+                            tex.SetPixel(x, y, new Color(0.75f, 0.82f, 0.95f, 1f));
                         }
                         else if ((Mathf.Abs(x - 27f) <= 1.6f || Mathf.Abs(x - 36f) <= 1.6f) && Mathf.Abs(y - 38f) <= 2.2f)
                         {
-                            tex.SetPixel(x, y, new Color(0.12f, 0.15f, 0.22f, 1f)); // 눈
+                            tex.SetPixel(x, y, new Color(0.12f, 0.15f, 0.22f, 1f));
                         }
                         else
                         {
-                            tex.SetPixel(x, y, new Color(1.0f, 0.94f, 0.88f, 1f)); // 얼굴
+                            tex.SetPixel(x, y, new Color(1.0f, 0.94f, 0.88f, 1f));
                         }
                     }
                     else if (bodyDist <= 13.5f && y <= 34)
@@ -1001,16 +1251,16 @@ namespace FragmentRPG.EditorTools
                         }
                         else if (Mathf.Abs(x - cx) <= 2.5f)
                         {
-                            tex.SetPixel(x, y, new Color(1.0f, 0.90f, 0.55f, 1f)); // 스카프/넥타이 포인트
+                            tex.SetPixel(x, y, new Color(1.0f, 0.90f, 0.55f, 1f));
                         }
                         else
                         {
-                            tex.SetPixel(x, y, new Color(0.88f, 0.92f, 0.98f, 1f)); // 망토/코트(색상은 SpriteRenderer.color로 틴트)
+                            tex.SetPixel(x, y, new Color(0.88f, 0.92f, 0.98f, 1f));
                         }
                     }
                     else if (shadowDist <= 11f)
                     {
-                        tex.SetPixel(x, y, new Color(0f, 0f, 0f, 0.35f)); // 발밑 그림자
+                        tex.SetPixel(x, y, new Color(0f, 0f, 0f, 0.35f));
                     }
                     else
                     {
@@ -1024,11 +1274,9 @@ namespace FragmentRPG.EditorTools
             Object.DestroyImmediate(tex);
         }
 
-        /// <summary>
-        /// 위쪽 광장 중앙에 배치되는 고풍스러운 시계탑(11시 55분 시계판 포함) 스프라이트 (96 x 112 px)
-        /// </summary>
         private static void GenerateClocktowerSprite(string path)
         {
+            if (File.Exists(path)) return;
             int w = 96;
             int h = 112;
             Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
@@ -1038,7 +1286,6 @@ namespace FragmentRPG.EditorTools
             {
                 for (int x = 0; x < w; x++)
                 {
-                    // 뾰족한 지붕 (y: 78 ~ 108)
                     if (y >= 78 && y <= 108)
                     {
                         float halfWidth = (108 - y) * 1.15f;
@@ -1049,20 +1296,17 @@ namespace FragmentRPG.EditorTools
                         }
                     }
 
-                    // 시계탑 본체 기둥 (x: 20 ~ 76, y: 8 ~ 78)
                     if (x >= 20 && x <= 76 && y >= 8 && y <= 78)
                     {
                         float clockDist = Vector2.Distance(new Vector2(x, y), new Vector2(cx, 54f));
                         if (clockDist <= 18f)
                         {
-                            // 황금 테두리 시계판
                             if (clockDist >= 15f)
                             {
                                 tex.SetPixel(x, y, new Color(0.92f, 0.76f, 0.30f, 1f));
                             }
                             else
                             {
-                                // 11시 55분을 가리키는 시침/분침
                                 bool hand = (Mathf.Abs(x - cx) <= 1.5f && y >= 54 && y <= 66) ||
                                             (Mathf.Abs((x - cx) + (y - 54) * 0.7f) <= 1.5f && y >= 54 && y <= 63);
                                 tex.SetPixel(x, y, hand ? new Color(0.15f, 0.15f, 0.20f, 1f) : new Color(0.98f, 0.95f, 0.85f, 1f));
@@ -1070,7 +1314,6 @@ namespace FragmentRPG.EditorTools
                             continue;
                         }
 
-                        // 아치형 입구 문 (y: 8 ~ 28)
                         if (Mathf.Abs(x - cx) <= 10f && y <= 26)
                         {
                             tex.SetPixel(x, y, new Color(0.25f, 0.18f, 0.12f, 1f));
@@ -1092,11 +1335,9 @@ namespace FragmentRPG.EditorTools
             Object.DestroyImmediate(tex);
         }
 
-        /// <summary>
-        /// 광장 주변에 배치되는 가로수/벚꽃나무 스프라이트 (64 x 72 px)
-        /// </summary>
         private static void GenerateTreeSprite(string path)
         {
+            if (File.Exists(path)) return;
             int w = 64;
             int h = 72;
             Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
@@ -1116,13 +1357,13 @@ namespace FragmentRPG.EditorTools
                         Color leaf = Color.Lerp(new Color(0.18f, 0.42f, 0.32f, 1f), new Color(0.32f, 0.68f, 0.48f, 1f), Mathf.Clamp01(shade));
                         if ((x * 13 + y * 29) % 53 == 0)
                         {
-                            leaf = new Color(0.98f, 0.72f, 0.88f, 1f); // 꽃잎 포인트
+                            leaf = new Color(0.98f, 0.72f, 0.88f, 1f);
                         }
                         tex.SetPixel(x, y, leaf);
                     }
                     else if (Mathf.Abs(x - cx) <= 4.5f && y >= 8 && y <= 32)
                     {
-                        tex.SetPixel(x, y, new Color(0.42f, 0.26f, 0.16f, 1f)); // 나무 줄기
+                        tex.SetPixel(x, y, new Color(0.42f, 0.26f, 0.16f, 1f));
                     }
                     else
                     {
@@ -1136,11 +1377,9 @@ namespace FragmentRPG.EditorTools
             Object.DestroyImmediate(tex);
         }
 
-        /// <summary>
-        /// 따뜻한 불빛 후광이 비치는 가로등 프롭 스프라이트 (48 x 64 px)
-        /// </summary>
         private static void GenerateStreetLampSprite(string path)
         {
+            if (File.Exists(path)) return;
             int w = 48;
             int h = 64;
             Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
@@ -1153,16 +1392,16 @@ namespace FragmentRPG.EditorTools
                     float lanternDist = Vector2.Distance(new Vector2(x, y), new Vector2(cx, 48f));
                     if (lanternDist <= 6.5f)
                     {
-                        tex.SetPixel(x, y, new Color(1.0f, 0.92f, 0.55f, 1f)); // 등불 코어
+                        tex.SetPixel(x, y, new Color(1.0f, 0.92f, 0.55f, 1f));
                     }
                     else if (Mathf.Abs(x - cx) <= 2.0f && y >= 6 && y <= 46)
                     {
-                        tex.SetPixel(x, y, new Color(0.25f, 0.28f, 0.35f, 1f)); // 가로등 기둥
+                        tex.SetPixel(x, y, new Color(0.25f, 0.28f, 0.35f, 1f));
                     }
                     else if (lanternDist <= 18f)
                     {
                         float alpha = (1f - lanternDist / 18f) * 0.38f;
-                        tex.SetPixel(x, y, new Color(1.0f, 0.85f, 0.35f, alpha)); // 은은한 불빛 후광
+                        tex.SetPixel(x, y, new Color(1.0f, 0.85f, 0.35f, alpha));
                     }
                     else
                     {
@@ -1178,6 +1417,7 @@ namespace FragmentRPG.EditorTools
 
         private static void GenerateSimpleSquare(string path)
         {
+            if (File.Exists(path)) return;
             int size = 64;
             Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             for (int y = 0; y < size; y++)
@@ -1197,12 +1437,36 @@ namespace FragmentRPG.EditorTools
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             if (importer != null)
             {
-                importer.textureType = TextureImporterType.Sprite;
-                importer.spriteImportMode = SpriteImportMode.Single;
-                importer.spritePixelsPerUnit = ppu;
-                importer.filterMode = filterMode;
-                importer.textureCompression = TextureImporterCompression.Uncompressed;
-                importer.SaveAndReimport();
+                bool changed = false;
+                if (importer.textureType != TextureImporterType.Sprite)
+                {
+                    importer.textureType = TextureImporterType.Sprite;
+                    changed = true;
+                }
+                if (importer.spriteImportMode != SpriteImportMode.Single)
+                {
+                    importer.spriteImportMode = SpriteImportMode.Single;
+                    changed = true;
+                }
+                if (Mathf.Abs(importer.spritePixelsPerUnit - ppu) > 0.01f)
+                {
+                    importer.spritePixelsPerUnit = ppu;
+                    changed = true;
+                }
+                if (importer.filterMode != filterMode)
+                {
+                    importer.filterMode = filterMode;
+                    changed = true;
+                }
+                if (importer.textureCompression != TextureImporterCompression.Uncompressed)
+                {
+                    importer.textureCompression = TextureImporterCompression.Uncompressed;
+                    changed = true;
+                }
+                if (changed)
+                {
+                    importer.SaveAndReimport();
+                }
             }
         }
     }

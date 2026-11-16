@@ -38,42 +38,52 @@ namespace FragmentRPG
     }
 
     /// <summary>
-    /// Fragment RPG 퍼즐 정답 검증 및 '기억조각 1, 2, 3 배경 빈칸 복원 -> 하나의 맵 완성 -> 과거의 기억 재생'
-    /// 흐름을 관리하는 퍼즐 매니저.
+    /// Fragment RPG 3대 퍼즐 검증 및
+    /// [배경 복원(③) -> 과거의 기억 관람 -> 기억 순서 맞추기(①) -> 잘못된 기억 찾기(②) -> 최종 기억 수리 완료]
+    /// 전체 퍼즐 체인을 관리하는 매니저.
     /// </summary>
     public class PuzzleManager : MonoBehaviour
     {
         public static PuzzleManager Instance { get; private set; }
 
         private const string MapRestorePuzzleId = "PUZ_MAP_RESTORE";
+        public const string OrderPuzzleId = "PUZ_EP1_ORDER";
+        public const string ContradictionPuzzleId = "PUZ_EP1_CONTRADICTION";
 
         [Header("Active Puzzle State")]
         [SerializeField] private string activePuzzleId;
         [SerializeField] private PuzzleType activePuzzleType;
         [SerializeField] private bool isPuzzleWindowOpen;
 
-        [Header("Map Blank Slot Restoration State")]
+        [Header("Episode 1 Puzzle Chain State")]
         [SerializeField] private int totalBlankSlots = 3;
         [SerializeField] private int filledBlankSlots = 0;
         [SerializeField] private bool isMemoryMapCompleted = false;
+        [SerializeField] private bool isOrderPuzzleSolved = false;
+        [SerializeField] private bool isContradictionPuzzleSolved = false;
+        [SerializeField] private bool isEpisodeFullyRepaired = false;
 
         private readonly List<SpatialPlacementEntry> currentMapPlacements = new List<SpatialPlacementEntry>();
         private readonly List<SpatialTargetRule> defaultMapRules = new List<SpatialTargetRule>
         {
-            new SpatialTargetRule { slotId = "SLOT_BG_01", requiredItemId = "FRAG_01", targetPosition = new Vector2(-3.2f, 0.8f), allowedTolerance = 1.0f },
-            new SpatialTargetRule { slotId = "SLOT_BG_02", requiredItemId = "FRAG_02", targetPosition = new Vector2(0.0f, 0.8f), allowedTolerance = 1.0f },
-            new SpatialTargetRule { slotId = "SLOT_BG_03", requiredItemId = "FRAG_03", targetPosition = new Vector2(3.2f, 0.8f), allowedTolerance = 1.0f }
+            new SpatialTargetRule { slotId = "SLOT_BG_01", requiredItemId = "FRAG_01", targetPosition = new Vector2(-2.1f, 0.15f), allowedTolerance = 1.5f },
+            new SpatialTargetRule { slotId = "SLOT_BG_02", requiredItemId = "FRAG_02", targetPosition = new Vector2(1.1f, 0.15f), allowedTolerance = 1.5f },
+            new SpatialTargetRule { slotId = "SLOT_BG_03", requiredItemId = "FRAG_03", targetPosition = new Vector2(4.3f, 0.15f), allowedTolerance = 1.5f }
         };
 
         public bool IsPuzzleWindowOpen => isPuzzleWindowOpen;
         public int TotalBlankSlots => totalBlankSlots;
         public int FilledBlankSlots => filledBlankSlots;
         public bool IsMemoryMapCompleted => isMemoryMapCompleted;
+        public bool IsOrderPuzzleSolved => isOrderPuzzleSolved;
+        public bool IsContradictionPuzzleSolved => isContradictionPuzzleSolved;
+        public bool IsEpisodeFullyRepaired => isEpisodeFullyRepaired;
 
         public event Action<string, PuzzleType> OnPuzzleOpened;
         public event Action<string, bool> OnPuzzleEvaluated;
         public event Action<InteractableObject, string, bool> OnSlotPlacementAttempted;
         public event Action OnMemoryMapCompleted;
+        public event Action OnEpisodeFullyRepaired;
 
         private void Awake()
         {
@@ -87,7 +97,6 @@ namespace FragmentRPG
 
         /// <summary>
         /// 배경의 비어진 칸(MapBlankSlot)에 플레이어가 선택한 기억조각(FRAG_01~03)을 끼워 넣습니다.
-        /// 알맞은 조각이면 해당 배경 칸이 복원되고, 3칸이 모두 채워지면 하나의 맵이 완성되어 과거의 기억이 열립니다.
         /// </summary>
         public bool TryPlaceFragmentIntoBlankSlot(InteractableObject blankSlot, string selectedClueId)
         {
@@ -96,7 +105,6 @@ namespace FragmentRPG
                 return false;
             }
 
-            // 알맞은 기억조각인지 확인
             bool isMatch = string.Equals(blankSlot.RequiredClueId, selectedClueId, StringComparison.Ordinal);
             if (!isMatch)
             {
@@ -105,7 +113,6 @@ namespace FragmentRPG
                 return false;
             }
 
-            // 빈칸 복원 처리
             blankSlot.FillBlankSlot();
 
             currentMapPlacements.RemoveAll(p => p.slotId == blankSlot.SlotId);
@@ -116,17 +123,15 @@ namespace FragmentRPG
             ));
 
             filledBlankSlots = currentMapPlacements.Count;
-            Debug.Log($"[PuzzleManager] 배경 복원 성공! '{blankSlot.DisplayName}' <- {selectedClueId} ({filledBlankSlots}/{totalBlankSlots})");
             OnSlotPlacementAttempted?.Invoke(blankSlot, selectedClueId, true);
 
-            // 3개의 비어진 배경 칸이 모두 채워졌는지 검증
             if (filledBlankSlots >= totalBlankSlots && !isMemoryMapCompleted)
             {
                 bool verified = VerifySpatialRestoration(MapRestorePuzzleId, currentMapPlacements, defaultMapRules, false);
                 if (verified)
                 {
                     isMemoryMapCompleted = true;
-                    Debug.Log("[PuzzleManager] ★★★ 기억조각 1, 2, 3이 모두 맞춰져 하나의 맵이 완성되었습니다! 과거의 기억이 나타납니다! ★★★");
+                    Debug.Log("[PuzzleManager] ★ 배경 복원 완료! 위쪽 시계탑 광장에 과거의 기억이 나타났습니다!");
                     OnMemoryMapCompleted?.Invoke();
                 }
             }
@@ -139,6 +144,10 @@ namespace FragmentRPG
             currentMapPlacements.Clear();
             filledBlankSlots = 0;
             isMemoryMapCompleted = false;
+            isOrderPuzzleSolved = false;
+            isContradictionPuzzleSolved = false;
+            isEpisodeFullyRepaired = false;
+            isPuzzleWindowOpen = false;
         }
 
         public void OpenPuzzle(string puzzleId, PuzzleType puzzleType)
@@ -185,6 +194,7 @@ namespace FragmentRPG
                 }
             }
 
+            isOrderPuzzleSolved = true;
             return HandlePuzzleResult(puzzleId, true);
         }
 
@@ -202,7 +212,19 @@ namespace FragmentRPG
             bool evidenceMatched = string.IsNullOrEmpty(requiredEvidenceClueId) ||
                                    string.Equals(presentedEvidenceClueId, requiredEvidenceClueId, StringComparison.Ordinal);
 
-            return HandlePuzzleResult(puzzleId, statementMatched && evidenceMatched);
+            bool solved = statementMatched && evidenceMatched;
+            if (solved)
+            {
+                isContradictionPuzzleSolved = true;
+                if (isOrderPuzzleSolved && !isEpisodeFullyRepaired)
+                {
+                    isEpisodeFullyRepaired = true;
+                    Debug.Log("[PuzzleManager] ★★★ 모든 기억 수리(공간 복원 + 시간 순서 + 모순 탐색)가 완벽하게 완료되었습니다! ★★★");
+                    OnEpisodeFullyRepaired?.Invoke();
+                }
+            }
+
+            return HandlePuzzleResult(puzzleId, solved);
         }
 
         /// <summary>
@@ -255,14 +277,10 @@ namespace FragmentRPG
 
         private bool HandlePuzzleResult(string puzzleId, bool isSolved)
         {
-            if (isSolved)
+            if (isSolved && StorySaveManager.Instance != null)
             {
-                if (StorySaveManager.Instance != null)
-                {
-                    StorySaveManager.Instance.MarkPuzzleSolved(puzzleId);
-                    StorySaveManager.Instance.SaveGame();
-                }
-                ClosePuzzle();
+                StorySaveManager.Instance.MarkPuzzleSolved(puzzleId);
+                StorySaveManager.Instance.SaveGame();
             }
 
             OnPuzzleEvaluated?.Invoke(puzzleId, isSolved);
