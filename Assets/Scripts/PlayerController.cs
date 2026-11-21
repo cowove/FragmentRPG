@@ -6,8 +6,7 @@ using UnityEngine.InputSystem;
 namespace FragmentRPG
 {
     /// <summary>
-    /// Top-down 2D 플레이어 이동 및 충돌 처리 컨트롤러.
-    /// Rigidbody2D(gravityScale = 0) 기반으로 WASD / 방향키 이동을 수행합니다.
+    /// Top-down 2D 플레이어 이동, 충돌 처리 및 넓어진 스테이지 맵을 위한 부드러운 카메라 추적(Camera Follow) 컨트롤러.
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
     [RequireComponent(typeof(Collider2D))]
@@ -15,12 +14,19 @@ namespace FragmentRPG
     {
         [Header("Movement Settings")]
         [Tooltip("플레이어 이동 속도")]
-        [SerializeField] private float moveSpeed = 5.0f;
+        [SerializeField] private float moveSpeed = 5.8f;
 
         [Tooltip("대화나 퍼즐 진행 중 이동 잠금 여부")]
         [SerializeField] private bool isMovementLocked = false;
 
+        [Header("Camera Follow Settings (넓어진 맵 카메라 추적)")]
+        [SerializeField] private bool enableCameraFollow = true;
+        [SerializeField] private float cameraSmoothSpeed = 7.5f;
+        [SerializeField] private Vector2 cameraBoundsMin = new Vector2(-2.2f, -1.8f);
+        [SerializeField] private Vector2 cameraBoundsMax = new Vector2(4.4f, 1.8f);
+
         private Rigidbody2D rb;
+        private SpriteRenderer sr;
         private Vector2 moveInput;
         private Vector2 lastLookDirection = Vector2.down;
 
@@ -42,12 +48,14 @@ namespace FragmentRPG
         private void Awake()
         {
             rb = GetComponent<Rigidbody2D>();
+            sr = GetComponent<SpriteRenderer>();
             ConfigureRigidbody();
         }
 
         private void Reset()
         {
             rb = GetComponent<Rigidbody2D>();
+            sr = GetComponent<SpriteRenderer>();
             ConfigureRigidbody();
         }
 
@@ -59,6 +67,21 @@ namespace FragmentRPG
             rb.constraints = RigidbodyConstraints2D.FreezeRotation;
             rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
             rb.interpolation = RigidbodyInterpolation2D.Interpolate;
+        }
+
+        /// <summary>
+        /// 현재 스테이지 맵 크기에 맞춰 카메라 이동 제한 영역을 설정합니다.
+        /// </summary>
+        public void SetCameraBounds(Vector2 minBounds, Vector2 maxBounds, bool snapImmediately = true)
+        {
+            cameraBoundsMin = minBounds;
+            cameraBoundsMax = maxBounds;
+
+            if (snapImmediately && Camera.main != null)
+            {
+                Vector3 targetPos = GetClampedCameraPosition(transform.position);
+                Camera.main.transform.position = targetPos;
+            }
         }
 
         private void Update()
@@ -75,7 +98,32 @@ namespace FragmentRPG
             if (moveInput.sqrMagnitude > 0.01f)
             {
                 lastLookDirection = moveInput;
+
+                if (sr != null && Mathf.Abs(moveInput.x) > 0.05f)
+                {
+                    sr.flipX = moveInput.x < 0f;
+                }
             }
+        }
+
+        private void LateUpdate()
+        {
+            if (!enableCameraFollow || Camera.main == null) return;
+
+            Vector3 desiredPos = GetClampedCameraPosition(transform.position);
+            Camera.main.transform.position = Vector3.Lerp(
+                Camera.main.transform.position,
+                desiredPos,
+                Time.deltaTime * cameraSmoothSpeed
+            );
+        }
+
+        private Vector3 GetClampedCameraPosition(Vector3 targetWorldPos)
+        {
+            // 좌측 UI 패널(화면 왼쪽 약 20%)을 고려해 카메라 중심을 살짝 왼쪽으로 오프셋하여 플레이어가 우측 게임 화면 중앙에 오도록 보정
+            float desiredX = Mathf.Clamp(targetWorldPos.x - 0.9f, cameraBoundsMin.x, cameraBoundsMax.x);
+            float desiredY = Mathf.Clamp(targetWorldPos.y, cameraBoundsMin.y, cameraBoundsMax.y);
+            return new Vector3(desiredX, desiredY, -10f);
         }
 
         private Vector2 ReadMovementInput()
@@ -100,7 +148,6 @@ namespace FragmentRPG
             }
             catch
             {
-                // Ignore if Legacy Input Manager is inactive in current Editor session
             }
             return new Vector2(horizontal, vertical);
 #else

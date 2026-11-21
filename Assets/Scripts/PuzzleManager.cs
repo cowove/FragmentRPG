@@ -38,7 +38,7 @@ namespace FragmentRPG
     }
 
     /// <summary>
-    /// Fragment RPG 3대 퍼즐 검증 및
+    /// 스테이지별(Ep.1 시계공 / Ep.2 화가 / Ep.3 수리공) 3대 퍼즐 검증 및
     /// [배경 복원(③) -> 과거의 기억 관람 -> 기억 순서 맞추기(①) -> 잘못된 기억 찾기(②) -> 최종 기억 수리 완료]
     /// 전체 퍼즐 체인을 관리하는 매니저.
     /// </summary>
@@ -46,42 +46,51 @@ namespace FragmentRPG
     {
         public static PuzzleManager Instance { get; private set; }
 
-        private const string MapRestorePuzzleId = "PUZ_MAP_RESTORE";
         public const string OrderPuzzleId = "PUZ_EP1_ORDER";
         public const string ContradictionPuzzleId = "PUZ_EP1_CONTRADICTION";
 
-        [Header("Active Puzzle State")]
+        [Header("Active Stage & Puzzle State")]
+        [SerializeField] private int currentStageNumber = 1; // 1: 시계공, 2: 화가, 3: 수리공
         [SerializeField] private string activePuzzleId;
         [SerializeField] private PuzzleType activePuzzleType;
         [SerializeField] private bool isPuzzleWindowOpen;
 
-        [Header("Episode 1 Puzzle Chain State")]
-        [SerializeField] private int totalBlankSlots = 3;
-        [SerializeField] private int filledBlankSlots = 0;
-        [SerializeField] private bool isMemoryMapCompleted = false;
-        [SerializeField] private bool isOrderPuzzleSolved = false;
-        [SerializeField] private bool isContradictionPuzzleSolved = false;
-        [SerializeField] private bool isEpisodeFullyRepaired = false;
+        [Header("Per-Stage Progress (Index 1~3)")]
+        [SerializeField] private int[] stageFilledSlots = new int[4];
+        [SerializeField] private bool[] stageMapCompleted = new bool[4];
+        [SerializeField] private bool[] stageOrderSolved = new bool[4];
+        [SerializeField] private bool[] stageContradictionSolved = new bool[4];
+        [SerializeField] private bool[] stageFullyRepaired = new bool[4];
 
-        private readonly List<SpatialPlacementEntry> currentMapPlacements = new List<SpatialPlacementEntry>();
-        private readonly List<SpatialTargetRule> defaultMapRules = new List<SpatialTargetRule>
+        private readonly Dictionary<int, List<SpatialPlacementEntry>> stagePlacements = new Dictionary<int, List<SpatialPlacementEntry>>
         {
-            new SpatialTargetRule { slotId = "SLOT_BG_01", requiredItemId = "FRAG_01", targetPosition = new Vector2(-2.1f, 0.15f), allowedTolerance = 1.5f },
-            new SpatialTargetRule { slotId = "SLOT_BG_02", requiredItemId = "FRAG_02", targetPosition = new Vector2(1.1f, 0.15f), allowedTolerance = 1.5f },
-            new SpatialTargetRule { slotId = "SLOT_BG_03", requiredItemId = "FRAG_03", targetPosition = new Vector2(4.3f, 0.15f), allowedTolerance = 1.5f }
+            { 1, new List<SpatialPlacementEntry>() },
+            { 2, new List<SpatialPlacementEntry>() },
+            { 3, new List<SpatialPlacementEntry>() }
         };
 
+        public int CurrentStageNumber
+        {
+            get => currentStageNumber;
+            set => currentStageNumber = Mathf.Clamp(value, 1, 3);
+        }
+
         public bool IsPuzzleWindowOpen => isPuzzleWindowOpen;
-        public int TotalBlankSlots => totalBlankSlots;
-        public int FilledBlankSlots => filledBlankSlots;
-        public bool IsMemoryMapCompleted => isMemoryMapCompleted;
-        public bool IsOrderPuzzleSolved => isOrderPuzzleSolved;
-        public bool IsContradictionPuzzleSolved => isContradictionPuzzleSolved;
-        public bool IsEpisodeFullyRepaired => isEpisodeFullyRepaired;
+        public int TotalBlankSlots => 3;
+        public int FilledBlankSlots => stageFilledSlots[currentStageNumber];
+        public bool IsMemoryMapCompleted => stageMapCompleted[currentStageNumber];
+        public bool IsOrderPuzzleSolved => stageOrderSolved[currentStageNumber];
+        public bool IsContradictionPuzzleSolved => stageContradictionSolved[currentStageNumber];
+        public bool IsEpisodeFullyRepaired => stageFullyRepaired[currentStageNumber];
+
+        public bool IsStageMapCompleted(int stage) => stage >= 1 && stage <= 3 && stageMapCompleted[stage];
+        public bool IsStageFullyRepaired(int stage) => stage >= 1 && stage <= 3 && stageFullyRepaired[stage];
+        public int GetStageFilledSlots(int stage) => stage >= 1 && stage <= 3 ? stageFilledSlots[stage] : 0;
 
         public event Action<string, PuzzleType> OnPuzzleOpened;
         public event Action<string, bool> OnPuzzleEvaluated;
         public event Action<InteractableObject, string, bool> OnSlotPlacementAttempted;
+        public event Action<int> OnStageMemoryMapCompleted;
         public event Action OnMemoryMapCompleted;
         public event Action OnEpisodeFullyRepaired;
 
@@ -96,7 +105,7 @@ namespace FragmentRPG
         }
 
         /// <summary>
-        /// 배경의 비어진 칸(MapBlankSlot)에 플레이어가 선택한 기억조각(FRAG_01~03)을 끼워 넣습니다.
+        /// 배경의 비어진 칸(MapBlankSlot)에 플레이어가 선택한 기억조각을 끼워 넣습니다.
         /// </summary>
         public bool TryPlaceFragmentIntoBlankSlot(InteractableObject blankSlot, string selectedClueId)
         {
@@ -115,25 +124,34 @@ namespace FragmentRPG
 
             blankSlot.FillBlankSlot();
 
-            currentMapPlacements.RemoveAll(p => p.slotId == blankSlot.SlotId);
-            currentMapPlacements.Add(new SpatialPlacementEntry(
+            int stg = currentStageNumber;
+            if (!stagePlacements.ContainsKey(stg))
+            {
+                stagePlacements[stg] = new List<SpatialPlacementEntry>();
+            }
+
+            stagePlacements[stg].RemoveAll(p => p.slotId == blankSlot.SlotId);
+            stagePlacements[stg].Add(new SpatialPlacementEntry(
                 blankSlot.SlotId,
                 selectedClueId,
                 blankSlot.transform.position
             ));
 
-            filledBlankSlots = currentMapPlacements.Count;
+            stageFilledSlots[stg] = stagePlacements[stg].Count;
             OnSlotPlacementAttempted?.Invoke(blankSlot, selectedClueId, true);
 
-            if (filledBlankSlots >= totalBlankSlots && !isMemoryMapCompleted)
+            if (stageFilledSlots[stg] >= TotalBlankSlots && !stageMapCompleted[stg])
             {
-                bool verified = VerifySpatialRestoration(MapRestorePuzzleId, currentMapPlacements, defaultMapRules, false);
-                if (verified)
+                stageMapCompleted[stg] = true;
+                if (StorySaveManager.Instance != null)
                 {
-                    isMemoryMapCompleted = true;
-                    Debug.Log("[PuzzleManager] ★ 배경 복원 완료! 위쪽 시계탑 광장에 과거의 기억이 나타났습니다!");
-                    OnMemoryMapCompleted?.Invoke();
+                    StorySaveManager.Instance.MarkPuzzleSolved($"PUZ_EP{stg}_MAP_RESTORE");
+                    StorySaveManager.Instance.SaveGame();
                 }
+
+                Debug.Log($"[PuzzleManager] ★ Stage {stg} 배경 복원 완료! 위쪽 광장에 과거의 기억이 나타났습니다!");
+                OnStageMemoryMapCompleted?.Invoke(stg);
+                OnMemoryMapCompleted?.Invoke();
             }
 
             return true;
@@ -141,12 +159,15 @@ namespace FragmentRPG
 
         public void ResetMapPuzzleState()
         {
-            currentMapPlacements.Clear();
-            filledBlankSlots = 0;
-            isMemoryMapCompleted = false;
-            isOrderPuzzleSolved = false;
-            isContradictionPuzzleSolved = false;
-            isEpisodeFullyRepaired = false;
+            for (int i = 1; i <= 3; i++)
+            {
+                stagePlacements[i].Clear();
+                stageFilledSlots[i] = 0;
+                stageMapCompleted[i] = false;
+                stageOrderSolved[i] = false;
+                stageContradictionSolved[i] = false;
+                stageFullyRepaired[i] = false;
+            }
             isPuzzleWindowOpen = false;
         }
 
@@ -194,7 +215,7 @@ namespace FragmentRPG
                 }
             }
 
-            isOrderPuzzleSolved = true;
+            stageOrderSolved[currentStageNumber] = true;
             return HandlePuzzleResult(puzzleId, true);
         }
 
@@ -215,11 +236,12 @@ namespace FragmentRPG
             bool solved = statementMatched && evidenceMatched;
             if (solved)
             {
-                isContradictionPuzzleSolved = true;
-                if (isOrderPuzzleSolved && !isEpisodeFullyRepaired)
+                int stg = currentStageNumber;
+                stageContradictionSolved[stg] = true;
+                if (stageOrderSolved[stg] && !stageFullyRepaired[stg])
                 {
-                    isEpisodeFullyRepaired = true;
-                    Debug.Log("[PuzzleManager] ★★★ 모든 기억 수리(공간 복원 + 시간 순서 + 모순 탐색)가 완벽하게 완료되었습니다! ★★★");
+                    stageFullyRepaired[stg] = true;
+                    Debug.Log($"[PuzzleManager] ★★★ Stage {stg} 모든 기억 수리(공간 복원 + 시간 순서 + 모순 탐색) 완료! ★★★");
                     OnEpisodeFullyRepaired?.Invoke();
                 }
             }
