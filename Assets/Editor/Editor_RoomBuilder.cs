@@ -17,7 +17,7 @@ namespace FragmentRPG.EditorTools
     public static class Editor_RoomBuilder
     {
         private const string SpriteFolder = "Assets/Resources/GeneratedSprites";
-        private const string AutoBuildKey = "FragmentRPG_MultiStageHQ_Built_v7";
+        private const string AutoBuildKey = "FragmentRPG_HandPaintedMasterpiece_v8";
 
         static Editor_RoomBuilder()
         {
@@ -63,10 +63,10 @@ namespace FragmentRPG.EditorTools
 
             EnsureRichArtSprites();
 
-            Sprite repairShopBg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_RepairShopCanvas_HQ.png");
-            Sprite stage1Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Stage1_ClockTown_HQ.png");
-            Sprite stage2Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Stage2_AtelierGarden_HQ.png");
-            Sprite stage3Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Stage3_Sanctuary_HQ.png");
+            Sprite repairShopBg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_RepairShopCanvas_HQ.jpg");
+            Sprite stage1Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Stage1_ClockTown_HQ.jpg");
+            Sprite stage2Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Stage2_AtelierGarden_HQ.jpg");
+            Sprite stage3Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Stage3_Sanctuary_HQ.jpg");
 
             Sprite voidSlotSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_VoidSlot.png");
             Sprite restoredLeftSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Restored_Left.png");
@@ -249,15 +249,9 @@ namespace FragmentRPG.EditorTools
             SpriteRenderer bgSr = shopBg.AddComponent<SpriteRenderer>();
             bgSr.sprite = shopBgSprite;
             bgSr.sortingOrder = -10;
+            FitSpriteToWorldSize(shopBg.transform, shopBgSprite, 16.0f, 11.33f);
 
-            CreateWorldLabel(shopRoot.transform, "『기억 수리점 대공방』 — 각 의뢰인과 대화하고 작업대 포털(Ep.1 / Ep.2 / Ep.3)을 조사해 기억 공간으로 입장하세요", new Vector3(1.2f, 4.7f, 0f), new Color(1f, 0.90f, 0.55f, 0.95f), 0.062f);
-
-            // 공방 실내 조명 가로등 & 이젤 장식
-            CreateEnvironmentProp(shopRoot.transform, "ShopLamp_1", new Vector3(-5.2f, 3.2f, 0f), lampSprite, 4);
-            CreateEnvironmentProp(shopRoot.transform, "ShopLamp_2", new Vector3(-1.0f, 3.2f, 0f), lampSprite, 4);
-            CreateEnvironmentProp(shopRoot.transform, "ShopLamp_3", new Vector3(3.4f, 3.2f, 0f), lampSprite, 4);
-            CreateEnvironmentProp(shopRoot.transform, "ShopLamp_4", new Vector3(7.6f, 3.2f, 0f), lampSprite, 4);
-            CreateEnvironmentProp(shopRoot.transform, "ShopEasel_Deco", new Vector3(1.2f, 2.5f, 0f), easelSprite, 4);
+            CreateWorldLabel(shopRoot.transform, "『기억 수리점 대공방』 — 각 의뢰인과 대화하고 작업대 포털(Ep.1 / Ep.2 / Ep.3)을 조사해 기억 공간으로 입장하세요", new Vector3(1.2f, 4.9f, 0f), new Color(1f, 0.92f, 0.58f, 0.98f), 0.062f);
 
             // [좌측 의뢰 구역] Ep.1 시계공 노인 & 회중시계 포털
             CreateShopClientNPC(
@@ -422,7 +416,7 @@ namespace FragmentRPG.EditorTools
             GameObject envRoot = new GameObject("StageEnvironment");
             envRoot.transform.SetParent(stageRoot.transform, false);
 
-            // 1. 고해상도 18.0 x 13.0 대형 배경 캔버스
+            // 1. 고해상도 핸드페인팅 18.0 x 13.0 대형 배경 일러스트 캔버스
             GameObject mapCanvas = new GameObject("StageBackgroundCanvas");
             mapCanvas.transform.SetParent(envRoot.transform, false);
             mapCanvas.transform.position = new Vector3(1.2f, 0.0f, 0f);
@@ -430,46 +424,7 @@ namespace FragmentRPG.EditorTools
             mapFloorSr.sprite = stageBgSprite;
             mapFloorSr.color = Color.white;
             mapFloorSr.sortingOrder = -10;
-
-            // 2. 위쪽 광장 중앙 랜드마크 (시계탑 / 대형 화실 이젤 / 기억의 코어 신전)
-            GameObject monument = new GameObject("Landmark_Center");
-            monument.transform.SetParent(envRoot.transform, false);
-            monument.transform.position = new Vector3(1.2f, 4.7f, 0f);
-            monument.transform.localScale = new Vector3(1.25f, 1.25f, 1f);
-            SpriteRenderer monSr = monument.AddComponent<SpriteRenderer>();
-            monSr.sprite = centerMonumentSprite;
-            monSr.sortingOrder = 4;
-            BoxCollider2D monCol = monument.AddComponent<BoxCollider2D>();
-            monCol.size = new Vector2(1.1f, 0.85f);
-
-            // 3. 아래쪽 광장 중앙 분수대/조각상 로터리 프롭
-            GameObject lowerFountain = new GameObject("Prop_CenterFountain");
-            lowerFountain.transform.SetParent(envRoot.transform, false);
-            lowerFountain.transform.position = new Vector3(1.2f, -2.1f, 0f);
-            SpriteRenderer ftnSr = lowerFountain.AddComponent<SpriteRenderer>();
-            ftnSr.sprite = fountainSprite;
-            ftnSr.sortingOrder = 4;
-            CircleCollider2D ftnCol = lowerFountain.AddComponent<CircleCollider2D>();
-            ftnCol.radius = 0.65f;
-
-            // 4. 넓어진 맵 곳곳에 가로수 나무 & 가로등 풍성하게 배치
-            Color treeTint = stageNum == 1 ? Color.white : (stageNum == 2 ? new Color(0.95f, 0.75f, 1f, 1f) : new Color(0.65f, 0.95f, 1f, 1f));
-            CreateTintedProp(envRoot.transform, "Tree_UL1", new Vector3(-5.8f, 4.6f, 0f), treeSprite, treeTint, 3);
-            CreateTintedProp(envRoot.transform, "Tree_UL2", new Vector3(-3.2f, 5.1f, 0f), treeSprite, treeTint, 3);
-            CreateTintedProp(envRoot.transform, "Tree_UR1", new Vector3(5.6f, 5.1f, 0f), treeSprite, treeTint, 3);
-            CreateTintedProp(envRoot.transform, "Tree_UR2", new Vector3(8.2f, 4.6f, 0f), treeSprite, treeTint, 3);
-
-            CreateTintedProp(envRoot.transform, "Tree_LL1", new Vector3(-5.8f, -4.7f, 0f), treeSprite, treeTint, 3);
-            CreateTintedProp(envRoot.transform, "Tree_LL2", new Vector3(-5.8f, -1.5f, 0f), treeSprite, treeTint, 3);
-            CreateTintedProp(envRoot.transform, "Tree_LR1", new Vector3(8.2f, -4.7f, 0f), treeSprite, treeTint, 3);
-            CreateTintedProp(envRoot.transform, "Tree_LR2", new Vector3(8.2f, -1.5f, 0f), treeSprite, treeTint, 3);
-
-            CreateEnvironmentProp(envRoot.transform, "Lamp_U1", new Vector3(-1.8f, 4.1f, 0f), lampSprite, 4);
-            CreateEnvironmentProp(envRoot.transform, "Lamp_U2", new Vector3(4.2f, 4.1f, 0f), lampSprite, 4);
-            CreateEnvironmentProp(envRoot.transform, "Lamp_L1", new Vector3(-2.6f, -1.4f, 0f), lampSprite, 4);
-            CreateEnvironmentProp(envRoot.transform, "Lamp_L2", new Vector3(5.0f, -1.4f, 0f), lampSprite, 4);
-            CreateEnvironmentProp(envRoot.transform, "Lamp_L3", new Vector3(-1.4f, -4.2f, 0f), lampSprite, 4);
-            CreateEnvironmentProp(envRoot.transform, "Lamp_L4", new Vector3(3.8f, -4.2f, 0f), lampSprite, 4);
+            FitSpriteToWorldSize(mapCanvas.transform, stageBgSprite, 18.0f, 13.0f);
 
             // 5. 외곽 경계 벽 콜라이더 (18.0 x 13.0 월드 유닛)
             CreateInvisibleWall(envRoot.transform, "Bound_Top", new Vector3(1.2f, 6.1f, 0f), new Vector2(18.0f, 0.5f));
@@ -1115,6 +1070,16 @@ namespace FragmentRPG.EditorTools
         // =====================================================================
         // 고속 Color32[] 기반 고해상도 스테이지별 배경 & 프롭 생성기
         // =====================================================================
+        private static void FitSpriteToWorldSize(Transform target, Sprite sprite, float targetWidth, float targetHeight)
+        {
+            if (target == null || sprite == null) return;
+            Vector2 size = sprite.bounds.size;
+            if (size.x > 0.001f && size.y > 0.001f)
+            {
+                target.localScale = new Vector3(targetWidth / size.x, targetHeight / size.y, 1f);
+            }
+        }
+
         private static void EnsureRichArtSprites()
         {
             if (!Directory.Exists(SpriteFolder))
@@ -1122,10 +1087,6 @@ namespace FragmentRPG.EditorTools
                 Directory.CreateDirectory(SpriteFolder);
             }
 
-            GenerateGrandRepairShopCanvas($"{SpriteFolder}/Spr_RepairShopCanvas_HQ.png");
-            GenerateExpandedStageCanvas($"{SpriteFolder}/Spr_Stage1_ClockTown_HQ.png", 1);
-            GenerateExpandedStageCanvas($"{SpriteFolder}/Spr_Stage2_AtelierGarden_HQ.png", 2);
-            GenerateExpandedStageCanvas($"{SpriteFolder}/Spr_Stage3_Sanctuary_HQ.png", 3);
             GenerateFountainPropSprite($"{SpriteFolder}/Spr_Fountain_HQ.png");
             GenerateEaselPropSprite($"{SpriteFolder}/Spr_Easel_HQ.png");
 
@@ -1142,10 +1103,10 @@ namespace FragmentRPG.EditorTools
 
             AssetDatabase.Refresh();
 
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_RepairShopCanvas_HQ.png", 48f, FilterMode.Point);
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage1_ClockTown_HQ.png", 48f, FilterMode.Point);
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage2_AtelierGarden_HQ.png", 48f, FilterMode.Point);
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage3_Sanctuary_HQ.png", 48f, FilterMode.Point);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_RepairShopCanvas_HQ.jpg", 100f, FilterMode.Bilinear, 2048);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage1_ClockTown_HQ.jpg", 100f, FilterMode.Bilinear, 2048);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage2_AtelierGarden_HQ.jpg", 100f, FilterMode.Bilinear, 2048);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage3_Sanctuary_HQ.jpg", 100f, FilterMode.Bilinear, 2048);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Fountain_HQ.png", 48f, FilterMode.Point);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Easel_HQ.png", 48f, FilterMode.Point);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_VoidSlot.png", 48f, FilterMode.Bilinear);
@@ -1944,7 +1905,7 @@ namespace FragmentRPG.EditorTools
             Object.DestroyImmediate(tex);
         }
 
-        private static void ConfigureSpriteImporter(string path, float ppu, FilterMode filterMode)
+        private static void ConfigureSpriteImporter(string path, float ppu, FilterMode filterMode, int maxTexSize = 1024)
         {
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             if (importer != null)
@@ -1968,6 +1929,11 @@ namespace FragmentRPG.EditorTools
                 if (importer.filterMode != filterMode)
                 {
                     importer.filterMode = filterMode;
+                    changed = true;
+                }
+                if (importer.maxTextureSize < maxTexSize)
+                {
+                    importer.maxTextureSize = maxTexSize;
                     changed = true;
                 }
                 if (importer.textureCompression != TextureImporterCompression.Uncompressed)
