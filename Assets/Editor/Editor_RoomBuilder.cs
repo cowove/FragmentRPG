@@ -17,7 +17,7 @@ namespace FragmentRPG.EditorTools
     public static class Editor_RoomBuilder
     {
         private const string SpriteFolder = "Assets/Resources/GeneratedSprites";
-        private const string AutoBuildKey = "FragmentRPG_HandPaintedMasterpiece_v8";
+        private const string AutoBuildKey = "FragmentRPG_SeamlessBridgesAndChar_v9";
 
         static Editor_RoomBuilder()
         {
@@ -69,12 +69,14 @@ namespace FragmentRPG.EditorTools
             Sprite stage3Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Stage3_Sanctuary_HQ.jpg");
 
             Sprite voidSlotSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_VoidSlot.png");
-            Sprite restoredLeftSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Restored_Left.png");
-            Sprite restoredCenterSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Restored_Center.png");
-            Sprite restoredRightSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Restored_Right.png");
+            Sprite bridgeHqSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Bridge_HQ.png");
+            Sprite restoredLeftSprite = bridgeHqSprite != null ? bridgeHqSprite : AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Restored_Left.png");
+            Sprite restoredCenterSprite = bridgeHqSprite != null ? bridgeHqSprite : AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Restored_Center.png");
+            Sprite restoredRightSprite = bridgeHqSprite != null ? bridgeHqSprite : AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Restored_Right.png");
 
             Sprite puzzlePieceSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_PuzzlePiece.png");
-            Sprite charSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Character.png");
+            Sprite charHqSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Character_HQ.png");
+            Sprite charSprite = charHqSprite != null ? charHqSprite : AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Character.png");
             Sprite clocktowerSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Clocktower.png");
             Sprite treeSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Tree.png");
             Sprite lampSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_StreetLamp.png");
@@ -108,8 +110,9 @@ namespace FragmentRPG.EditorTools
 
             SpriteRenderer playerSprite = playerObj.AddComponent<SpriteRenderer>();
             playerSprite.sprite = charSprite;
-            playerSprite.color = new Color(0.45f, 0.90f, 1.0f, 1.0f);
+            playerSprite.color = Color.white;
             playerSprite.sortingOrder = 20;
+            FitSpriteToWorldSize(playerObj.transform, charSprite, 0.72f, 1.48f);
 
             Rigidbody2D rb = playerObj.AddComponent<Rigidbody2D>();
             rb.gravityScale = 0f;
@@ -117,10 +120,10 @@ namespace FragmentRPG.EditorTools
             rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
 
             BoxCollider2D playerCollider = playerObj.AddComponent<BoxCollider2D>();
-            playerCollider.size = new Vector2(0.65f, 0.65f);
+            playerCollider.size = new Vector2(0.55f, 0.55f);
 
             playerObj.AddComponent<PlayerController>();
-            CreateWorldLabel(playerObj.transform, "수리공(플레이어)", new Vector3(0f, 0.72f, 0f), new Color(0.55f, 0.95f, 1f, 1f), 0.062f);
+            CreateWorldLabel(playerObj.transform, "수리공(플레이어)", new Vector3(0f, 0.9f, 0f), new Color(0.55f, 0.95f, 1f, 1f), 0.062f);
             interactionMgr.SetPlayerTransform(playerObj.transform);
 
             // 3. 거점 공간: 넓어진 『기억 수리점 대공방 (RepairShop_Space)』 (16.0 x 11.33 월드 유닛)
@@ -457,7 +460,7 @@ namespace FragmentRPG.EditorTools
                 prefix + "FRAG_01",
                 voidSlotSprite,
                 restoredLeftSprite,
-                lampSprite
+                null
             );
 
             CreateRichBlankSlot(
@@ -483,7 +486,7 @@ namespace FragmentRPG.EditorTools
                 prefix + "FRAG_03",
                 voidSlotSprite,
                 restoredRightSprite,
-                treeSprite
+                null
             );
 
             // 7. 넓어진 아래쪽 맵 곳곳에 기억조각 1, 2, 3 배치
@@ -1107,6 +1110,8 @@ namespace FragmentRPG.EditorTools
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage1_ClockTown_HQ.jpg", 100f, FilterMode.Bilinear, 2048);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage2_AtelierGarden_HQ.jpg", 100f, FilterMode.Bilinear, 2048);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage3_Sanctuary_HQ.jpg", 100f, FilterMode.Bilinear, 2048);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Bridge_HQ.png", 350f, FilterMode.Bilinear, 1024);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Character_HQ.png", 500f, FilterMode.Bilinear, 1024);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Fountain_HQ.png", 48f, FilterMode.Point);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Easel_HQ.png", 48f, FilterMode.Point);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_VoidSlot.png", 48f, FilterMode.Bilinear);
@@ -1527,9 +1532,8 @@ namespace FragmentRPG.EditorTools
 
         private static void GenerateVoidSlotSprite(string path)
         {
-            if (File.Exists(path)) return;
             int w = 132;
-            int h = 96;
+            int h = 112;
             Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
 
             for (int y = 0; y < h; y++)
@@ -1537,28 +1541,19 @@ namespace FragmentRPG.EditorTools
                 for (int x = 0; x < w; x++)
                 {
                     bool onBorder = (x < 4 || x >= w - 4 || y < 4 || y >= h - 4);
-                    bool dashed = ((x + y) / 8) % 2 == 0;
+                    bool dashed = ((x + y) / 10) % 2 == 0;
 
                     if (onBorder)
                     {
-                        tex.SetPixel(x, y, dashed ? new Color(1.0f, 0.72f, 0.35f, 0.95f) : new Color(0.35f, 0.20f, 0.45f, 0.85f));
+                        tex.SetPixel(x, y, dashed ? new Color(1.0f, 0.85f, 0.42f, 0.95f) : new Color(0.55f, 0.35f, 0.85f, 0.55f));
                         continue;
                     }
 
+                    // 반투명 황금/보라빛 마법 테두리 안쪽으로 실제 강물이 자연스럽게 비치도록 구성
                     float nx = (x - w * 0.5f) / (w * 0.5f);
                     float ny = (y - h * 0.5f) / (h * 0.5f);
                     float r = Mathf.Sqrt(nx * nx + ny * ny);
-                    Color voidCol = Color.Lerp(new Color(0.05f, 0.04f, 0.11f, 0.98f), new Color(0.14f, 0.09f, 0.24f, 0.96f), Mathf.Clamp01(r));
-
-                    if (Mathf.Abs((y - h * 0.5f) - Mathf.Sin(x * 0.12f) * 14f) < 1.2f)
-                    {
-                        voidCol = new Color(0.45f, 0.28f, 0.68f, 0.9f);
-                    }
-                    else if ((x * 37 + y * 53) % 181 == 0)
-                    {
-                        voidCol = new Color(0.75f, 0.65f, 1.0f, 0.9f);
-                    }
-
+                    Color voidCol = new Color(0.12f, 0.08f, 0.24f, Mathf.Lerp(0.18f, 0.42f, Mathf.Clamp01(r)));
                     tex.SetPixel(x, y, voidCol);
                 }
             }
