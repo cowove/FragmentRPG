@@ -17,7 +17,7 @@ namespace FragmentRPG.EditorTools
     public static class Editor_RoomBuilder
     {
         private const string SpriteFolder = "Assets/Resources/GeneratedSprites";
-        private const string AutoBuildKey = "FragmentRPG_SeamlessBridgesAndChar_v9";
+        private const string AutoBuildKey = "FragmentRPG_Crisp2DRPG_v10";
 
         static Editor_RoomBuilder()
         {
@@ -63,20 +63,19 @@ namespace FragmentRPG.EditorTools
 
             EnsureRichArtSprites();
 
-            Sprite repairShopBg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_RepairShopCanvas_HQ.jpg");
-            Sprite stage1Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Stage1_ClockTown_HQ.jpg");
-            Sprite stage2Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Stage2_AtelierGarden_HQ.jpg");
-            Sprite stage3Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Stage3_Sanctuary_HQ.jpg");
+            Sprite repairShopBg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_RepairShop_2DRPG.png");
+            Sprite stage1Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Stage1_2DRPG.png");
+            Sprite stage2Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Stage2_2DRPG.png");
+            Sprite stage3Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Stage3_2DRPG.png");
 
             Sprite voidSlotSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_VoidSlot.png");
-            Sprite bridgeHqSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Bridge_HQ.png");
-            Sprite restoredLeftSprite = bridgeHqSprite != null ? bridgeHqSprite : AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Restored_Left.png");
-            Sprite restoredCenterSprite = bridgeHqSprite != null ? bridgeHqSprite : AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Restored_Center.png");
-            Sprite restoredRightSprite = bridgeHqSprite != null ? bridgeHqSprite : AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Restored_Right.png");
+            Sprite bridgeRpgSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Bridge_2DRPG.png");
+            Sprite restoredLeftSprite = bridgeRpgSprite != null ? bridgeRpgSprite : AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Restored_Left.png");
+            Sprite restoredCenterSprite = bridgeRpgSprite != null ? bridgeRpgSprite : AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Restored_Center.png");
+            Sprite restoredRightSprite = bridgeRpgSprite != null ? bridgeRpgSprite : AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Restored_Right.png");
 
             Sprite puzzlePieceSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_PuzzlePiece.png");
-            Sprite charHqSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Character_HQ.png");
-            Sprite charSprite = charHqSprite != null ? charHqSprite : AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Character.png");
+            Sprite charSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Character.png");
             Sprite clocktowerSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Clocktower.png");
             Sprite treeSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Tree.png");
             Sprite lampSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_StreetLamp.png");
@@ -110,9 +109,8 @@ namespace FragmentRPG.EditorTools
 
             SpriteRenderer playerSprite = playerObj.AddComponent<SpriteRenderer>();
             playerSprite.sprite = charSprite;
-            playerSprite.color = Color.white;
+            playerSprite.color = new Color(0.45f, 0.90f, 1.0f, 1.0f);
             playerSprite.sortingOrder = 20;
-            FitSpriteToWorldSize(playerObj.transform, charSprite, 0.72f, 1.48f);
 
             Rigidbody2D rb = playerObj.AddComponent<Rigidbody2D>();
             rb.gravityScale = 0f;
@@ -120,10 +118,10 @@ namespace FragmentRPG.EditorTools
             rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
 
             BoxCollider2D playerCollider = playerObj.AddComponent<BoxCollider2D>();
-            playerCollider.size = new Vector2(0.55f, 0.55f);
+            playerCollider.size = new Vector2(0.65f, 0.65f);
 
             playerObj.AddComponent<PlayerController>();
-            CreateWorldLabel(playerObj.transform, "수리공(플레이어)", new Vector3(0f, 0.9f, 0f), new Color(0.55f, 0.95f, 1f, 1f), 0.062f);
+            CreateWorldLabel(playerObj.transform, "수리공(플레이어)", new Vector3(0f, 0.72f, 0f), new Color(0.55f, 0.95f, 1f, 1f), 0.062f);
             interactionMgr.SetPlayerTransform(playerObj.transform);
 
             // 3. 거점 공간: 넓어진 『기억 수리점 대공방 (RepairShop_Space)』 (16.0 x 11.33 월드 유닛)
@@ -1106,12 +1104,11 @@ namespace FragmentRPG.EditorTools
 
             AssetDatabase.Refresh();
 
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_RepairShopCanvas_HQ.jpg", 100f, FilterMode.Bilinear, 2048);
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage1_ClockTown_HQ.jpg", 100f, FilterMode.Bilinear, 2048);
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage2_AtelierGarden_HQ.jpg", 100f, FilterMode.Bilinear, 2048);
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage3_Sanctuary_HQ.jpg", 100f, FilterMode.Bilinear, 2048);
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Bridge_HQ.png", 350f, FilterMode.Bilinear, 1024);
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Character_HQ.png", 500f, FilterMode.Bilinear, 1024);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_RepairShop_2DRPG.png", 32f, FilterMode.Point, 1024);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage1_2DRPG.png", 32f, FilterMode.Point, 1024);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage2_2DRPG.png", 32f, FilterMode.Point, 1024);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage3_2DRPG.png", 32f, FilterMode.Point, 1024);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Bridge_2DRPG.png", 46f, FilterMode.Point, 512);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Fountain_HQ.png", 48f, FilterMode.Point);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Easel_HQ.png", 48f, FilterMode.Point);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_VoidSlot.png", 48f, FilterMode.Bilinear);
