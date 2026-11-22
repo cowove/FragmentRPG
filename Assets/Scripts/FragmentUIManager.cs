@@ -321,57 +321,6 @@ namespace FragmentRPG
             SwitchSpace(SpaceRepairShop);
         }
 
-        /// <summary>
-        /// 각 스테이지(1번맵 집 거실, 2번맵 지하철역, 3번맵 기억 속 공간)의
-        /// 비어진 배경 퍼즐 칸 3개를 맵 전체 후보 좌표 중 랜덤으로 3곳 선택해 배치합니다.
-        /// </summary>
-        public void RandomizeAllStageBlankSlots()
-        {
-            RandomizeBlankSlotsInStage(stage1Root);
-            RandomizeBlankSlotsInStage(stage2Root);
-            RandomizeBlankSlotsInStage(stage3Root);
-        }
-
-        private void RandomizeBlankSlotsInStage(GameObject stageRoot)
-        {
-            if (stageRoot == null) return;
-
-            Transform slotsParent = stageRoot.transform.Find("BackgroundPuzzleSlots");
-            if (slotsParent == null) return;
-
-            // 맵 전체(18 x 12)에 고르게 분포된 8개 후보 위치 (플레이어 시작점 및 외벽과 겹치지 않음)
-            List<Vector3> candidatePositions = new List<Vector3>
-            {
-                new Vector3(-4.2f,  2.8f, 0f),  // 좌상단
-                new Vector3( 1.2f,  3.1f, 0f),  // 중상단
-                new Vector3( 6.4f,  2.8f, 0f),  // 우상단
-                new Vector3(-4.5f,  0.0f, 0f),  // 좌중앙
-                new Vector3( 6.5f,  0.0f, 0f),  // 우중앙
-                new Vector3(-4.0f, -3.1f, 0f),  // 좌하단
-                new Vector3( 4.8f, -3.2f, 0f),  // 우하단
-                new Vector3( 1.2f,  0.4f, 0f)   // 정중앙
-            };
-
-            // Fisher-Yates 셔플로 중복 없이 랜덤 3곳 선정
-            for (int i = candidatePositions.Count - 1; i > 0; i--)
-            {
-                int j = UnityEngine.Random.Range(0, i + 1);
-                Vector3 temp = candidatePositions[i];
-                candidatePositions[i] = candidatePositions[j];
-                candidatePositions[j] = temp;
-            }
-
-            int idx = 0;
-            foreach (Transform child in slotsParent)
-            {
-                if (idx < candidatePositions.Count)
-                {
-                    child.position = candidatePositions[idx];
-                    idx++;
-                }
-            }
-        }
-
         public void RefreshHUD()
         {
             bool inShop = currentSpaceId == SpaceRepairShop;
