@@ -17,7 +17,7 @@ namespace FragmentRPG.EditorTools
     public static class Editor_RoomBuilder
     {
         private const string SpriteFolder = "Assets/Resources/GeneratedSprites";
-        private const string AutoBuildKey = "FragmentRPG_Crisp2DRPG_v10";
+        private const string AutoBuildKey = "FragmentRPG_LivingRoomSubwayFusion_v11";
 
         static Editor_RoomBuilder()
         {
@@ -64,15 +64,15 @@ namespace FragmentRPG.EditorTools
             EnsureRichArtSprites();
 
             Sprite repairShopBg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_RepairShop_2DRPG.png");
-            Sprite stage1Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Stage1_2DRPG.png");
-            Sprite stage2Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Stage2_2DRPG.png");
-            Sprite stage3Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Stage3_2DRPG.png");
+            Sprite stage1Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Map1_LivingRoom.png");
+            Sprite stage2Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Map2_SubwayStation.png");
+            Sprite stage3Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Map3_MemoryFusion.png");
 
             Sprite voidSlotSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_VoidSlot.png");
-            Sprite bridgeRpgSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Bridge_2DRPG.png");
-            Sprite restoredLeftSprite = bridgeRpgSprite != null ? bridgeRpgSprite : AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Restored_Left.png");
-            Sprite restoredCenterSprite = bridgeRpgSprite != null ? bridgeRpgSprite : AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Restored_Center.png");
-            Sprite restoredRightSprite = bridgeRpgSprite != null ? bridgeRpgSprite : AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Restored_Right.png");
+            // null을 전달하면 복원 시 가림막이 사라지며 아래의 실제 2D RPG 맵 배경이 이음새 없이 완벽히 드러납니다!
+            Sprite restoredLeftSprite = null;
+            Sprite restoredCenterSprite = null;
+            Sprite restoredRightSprite = null;
 
             Sprite puzzlePieceSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_PuzzlePiece.png");
             Sprite charSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Character.png");
@@ -427,31 +427,25 @@ namespace FragmentRPG.EditorTools
             mapFloorSr.sortingOrder = -10;
             FitSpriteToWorldSize(mapCanvas.transform, stageBgSprite, 18.0f, 13.0f);
 
-            // 5. 외곽 경계 벽 콜라이더 (18.0 x 13.0 월드 유닛)
-            CreateInvisibleWall(envRoot.transform, "Bound_Top", new Vector3(1.2f, 6.1f, 0f), new Vector2(18.0f, 0.5f));
-            CreateInvisibleWall(envRoot.transform, "Bound_Bottom", new Vector3(1.2f, -6.1f, 0f), new Vector2(18.0f, 0.5f));
-            CreateInvisibleWall(envRoot.transform, "Bound_Left", new Vector3(-7.4f, 0f, 0f), new Vector2(0.5f, 12.8f));
-            CreateInvisibleWall(envRoot.transform, "Bound_Right", new Vector3(9.8f, 0f, 0f), new Vector2(0.5f, 12.8f));
+            // 5. 외곽 경계 벽 콜라이더 (18.0 x 12.0 월드 유닛 — 맵 전체를 자유롭게 이동하며 랜덤 빈 배경 3곳을 탐색!)
+            CreateInvisibleWall(envRoot.transform, "Bound_Top", new Vector3(1.2f, 5.6f, 0f), new Vector2(18.0f, 0.5f));
+            CreateInvisibleWall(envRoot.transform, "Bound_Bottom", new Vector3(1.2f, -5.6f, 0f), new Vector2(18.0f, 0.5f));
+            CreateInvisibleWall(envRoot.transform, "Bound_Left", new Vector3(-7.4f, 0f, 0f), new Vector2(0.5f, 12.0f));
+            CreateInvisibleWall(envRoot.transform, "Bound_Right", new Vector3(9.8f, 0f, 0f), new Vector2(0.5f, 12.0f));
 
-            // 가운데 수로(강물/연못/차원해자) 충돌 벽 (다리 슬롯 3곳: x = -3.4, x = 1.2, x = 5.8 을 제외한 강둑 구간 막음)
-            CreateInvisibleWall(envRoot.transform, "CanalWall_LeftEdge", new Vector3(-6.2f, 0.25f, 0f), new Vector2(2.8f, 2.0f));
-            CreateInvisibleWall(envRoot.transform, "CanalWall_MidLeft", new Vector3(-1.1f, 0.25f, 0f), new Vector2(1.8f, 2.0f));
-            CreateInvisibleWall(envRoot.transform, "CanalWall_MidRight", new Vector3(3.5f, 0.25f, 0f), new Vector2(1.8f, 2.0f));
-            CreateInvisibleWall(envRoot.transform, "CanalWall_RightEdge", new Vector3(8.6f, 0.25f, 0f), new Vector2(2.8f, 2.0f));
-
-            // 6. 배경의 비어진 다리 퍼즐 슬롯 3곳 (간격을 넓혀 쾌적하게 배치: x = -3.4, 1.2, 5.8)
+            // 6. 맵 전체 랜덤 위치에 배치되는 비어진 배경 퍼즐 슬롯 3곳 (실행 시 FragmentUIManager가 맵 전체에서 랜덤 3곳으로 재배치)
             GameObject slotsRoot = new GameObject("BackgroundPuzzleSlots");
             slotsRoot.transform.SetParent(stageRoot.transform, false);
 
             string prefix = $"EP{stageNum}_";
-            string s1Name = stageNum == 1 ? "비어진 배경 1 (서쪽 가로등 다리)" : (stageNum == 2 ? "비어진 배경 1 (서쪽 붓꽃 정원 다리)" : "비어진 배경 1 (서쪽 태엽 기어 다리)");
-            string s2Name = stageNum == 1 ? "비어진 배경 2 (중앙 시계탑 대교)" : (stageNum == 2 ? "비어진 배경 2 (중앙 팔레트 아치교)" : "비어진 배경 2 (중앙 별빛 코어 다리)");
-            string s3Name = stageNum == 1 ? "비어진 배경 3 (동쪽 벚꽃 벤치교)" : (stageNum == 2 ? "비어진 배경 3 (동쪽 조각상 테라스교)" : "비어진 배경 3 (동쪽 시간의 서고 다리)");
+            string s1Name = stageNum == 1 ? "거실 빈 배경 1" : (stageNum == 2 ? "지하철역 빈 배경 1" : "기억 공간 빈 배경 1");
+            string s2Name = stageNum == 1 ? "거실 빈 배경 2" : (stageNum == 2 ? "지하철역 빈 배경 2" : "기억 공간 빈 배경 2");
+            string s3Name = stageNum == 1 ? "거실 빈 배경 3" : (stageNum == 2 ? "지하철역 빈 배경 3" : "기억 공간 빈 배경 3");
 
             CreateRichBlankSlot(
                 slotsRoot.transform,
                 "BlankSlot_01",
-                new Vector3(-3.4f, 0.25f, 0f),
+                new Vector3(-4.2f, 2.8f, 0f),
                 prefix + "SLOT_01",
                 s1Name,
                 "[빈 배경 1]",
@@ -464,7 +458,7 @@ namespace FragmentRPG.EditorTools
             CreateRichBlankSlot(
                 slotsRoot.transform,
                 "BlankSlot_02",
-                new Vector3(1.2f, 0.25f, 0f),
+                new Vector3(1.2f, 0.4f, 0f),
                 prefix + "SLOT_02",
                 s2Name,
                 "[빈 배경 2]",
@@ -477,7 +471,7 @@ namespace FragmentRPG.EditorTools
             CreateRichBlankSlot(
                 slotsRoot.transform,
                 "BlankSlot_03",
-                new Vector3(5.8f, 0.25f, 0f),
+                new Vector3(6.4f, 2.8f, 0f),
                 prefix + "SLOT_03",
                 s3Name,
                 "[빈 배경 3]",
@@ -960,9 +954,9 @@ namespace FragmentRPG.EditorTools
             Text headerTitleText = CreateUIText(topBar.transform, "HeaderTitleText", "[거점: 기억 수리점 대공방]", defaultFont, 13, TextAnchor.MiddleLeft, Color.white, new Vector2(0f, 0f), new Vector2(0.53f, 1f), new Vector2(14f, 0f), Vector2.zero);
 
             CreateTopNavButton(topBar.transform, "Btn_Shop", "거점: 수리점", defaultFont, new Vector2(0.54f, 0.15f), new Vector2(0.625f, 0.85f), new Color(0.42f, 0.28f, 0.16f, 1f), uiMgr.EnterRepairShop);
-            CreateTopNavButton(topBar.transform, "Btn_Ep1", "Ep.1 시계탑", defaultFont, new Vector2(0.63f, 0.15f), new Vector2(0.715f, 0.85f), new Color(0.20f, 0.38f, 0.56f, 1f), uiMgr.EnterStage1);
-            CreateTopNavButton(topBar.transform, "Btn_Ep2", "Ep.2 화실정원", defaultFont, new Vector2(0.72f, 0.15f), new Vector2(0.805f, 0.85f), new Color(0.38f, 0.24f, 0.54f, 1f), uiMgr.EnterStage2);
-            CreateTopNavButton(topBar.transform, "Btn_Ep3", "Ep.3 기억성소", defaultFont, new Vector2(0.81f, 0.15f), new Vector2(0.895f, 0.85f), new Color(0.18f, 0.46f, 0.44f, 1f), uiMgr.EnterStage3);
+            CreateTopNavButton(topBar.transform, "Btn_Ep1", "1. 집 거실", defaultFont, new Vector2(0.63f, 0.15f), new Vector2(0.715f, 0.85f), new Color(0.56f, 0.36f, 0.20f, 1f), uiMgr.EnterStage1);
+            CreateTopNavButton(topBar.transform, "Btn_Ep2", "2. 지하철역", defaultFont, new Vector2(0.72f, 0.15f), new Vector2(0.805f, 0.85f), new Color(0.20f, 0.38f, 0.56f, 1f), uiMgr.EnterStage2);
+            CreateTopNavButton(topBar.transform, "Btn_Ep3", "3. 기억 공간", defaultFont, new Vector2(0.81f, 0.15f), new Vector2(0.895f, 0.85f), new Color(0.38f, 0.24f, 0.54f, 1f), uiMgr.EnterStage3);
             CreateTopNavButton(topBar.transform, "Btn_Reset", "전체 리셋", defaultFont, new Vector2(0.905f, 0.15f), new Vector2(0.988f, 0.85f), new Color(0.55f, 0.24f, 0.24f, 1f), uiMgr.ResetPuzzleMap);
 
             // 좌측 인벤토리 및 에피소드 체크리스트 패널
@@ -1088,13 +1082,14 @@ namespace FragmentRPG.EditorTools
                 Directory.CreateDirectory(SpriteFolder);
             }
 
+            GenerateLivingRoomMapSprite($"{SpriteFolder}/Spr_Map1_LivingRoom.png");
+            GenerateSubwayStationMapSprite($"{SpriteFolder}/Spr_Map2_SubwayStation.png");
+            GenerateMemoryFusionMapSprite($"{SpriteFolder}/Spr_Map3_MemoryFusion.png");
+
             GenerateFountainPropSprite($"{SpriteFolder}/Spr_Fountain_HQ.png");
             GenerateEaselPropSprite($"{SpriteFolder}/Spr_Easel_HQ.png");
 
             GenerateVoidSlotSprite($"{SpriteFolder}/Spr_VoidSlot.png");
-            GenerateRestoredSlotSprite($"{SpriteFolder}/Spr_Restored_Left.png", 1);
-            GenerateRestoredSlotSprite($"{SpriteFolder}/Spr_Restored_Center.png", 2);
-            GenerateRestoredSlotSprite($"{SpriteFolder}/Spr_Restored_Right.png", 3);
             GeneratePuzzlePieceSprite($"{SpriteFolder}/Spr_PuzzlePiece.png");
             GenerateCharacterSprite($"{SpriteFolder}/Spr_Character.png");
             GenerateClocktowerSprite($"{SpriteFolder}/Spr_Clocktower.png");
@@ -1105,10 +1100,9 @@ namespace FragmentRPG.EditorTools
             AssetDatabase.Refresh();
 
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_RepairShop_2DRPG.png", 32f, FilterMode.Point, 1024);
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage1_2DRPG.png", 32f, FilterMode.Point, 1024);
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage2_2DRPG.png", 32f, FilterMode.Point, 1024);
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Stage3_2DRPG.png", 32f, FilterMode.Point, 1024);
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Bridge_2DRPG.png", 46f, FilterMode.Point, 512);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Map1_LivingRoom.png", 32f, FilterMode.Point, 1024);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Map2_SubwayStation.png", 32f, FilterMode.Point, 1024);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Map3_MemoryFusion.png", 32f, FilterMode.Point, 1024);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Fountain_HQ.png", 48f, FilterMode.Point);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Easel_HQ.png", 48f, FilterMode.Point);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_VoidSlot.png", 48f, FilterMode.Bilinear);
@@ -1527,6 +1521,281 @@ namespace FragmentRPG.EditorTools
             Object.DestroyImmediate(tex);
         }
 
+        /// <summary>
+        /// 1번 맵: 『집 거실 (Living Room)』 32비트 2D RPG 도트 맵 (480 x 320 px)
+        /// 따뜻한 원목 마루, 상단 베란다 창문과 커튼, TV 장식장, 책장, 중앙 L자 소파 & 러그 & 커피 테이블, 화분, 하단 현관문!
+        /// </summary>
+        private static void GenerateLivingRoomMapSprite(string path)
+        {
+            int w = 480;
+            int h = 320;
+            Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            Color32[] pixels = new Color32[w * h];
+
+            for (int y = 0; y < h; y++)
+            {
+                for (int x = 0; x < w; x++)
+                {
+                    pixels[y * w + x] = SampleLivingRoomPixel(x, y, w, h);
+                }
+            }
+
+            tex.SetPixels32(pixels);
+            tex.Apply();
+            File.WriteAllBytes(path, tex.EncodeToPNG());
+            Object.DestroyImmediate(tex);
+        }
+
+        private static Color32 SampleLivingRoomPixel(int x, int y, int w, int h)
+        {
+            // 외곽 집 벽면 테두리
+            if (x < 12 || x >= w - 12 || y < 12 || y >= h - 12)
+                return new Color32(62, 46, 38, 255);
+
+            // 상단 거실 벽면 (y >= 242)
+            if (y >= 242)
+            {
+                // 왼쪽 대형 창문 (x: 42~162, y: 256~302) - 노을빛 하늘과 커튼
+                if (x >= 42 && x <= 162 && y >= 256 && y <= 302)
+                {
+                    if (x < 56 || x > 148) return (x % 4 < 2) ? new Color32(218, 175, 138, 255) : new Color32(195, 148, 112, 255); // 커튼
+                    if (x < 58 || x > 146 || y < 260 || y > 298 || Mathf.Abs(x - 102) < 2) return new Color32(118, 86, 62, 255); // 창틀
+                    float t = (y - 260f) / 38f;
+                    return Color.Lerp(new Color(0.95f, 0.58f, 0.35f), new Color(0.28f, 0.35f, 0.62f), t); // 노을 창밖 풍경
+                }
+
+                // 중앙 TV 장식장 & TV (x: 192~288, y: 244~292)
+                if (x >= 198 && x <= 282 && y >= 262 && y <= 296)
+                {
+                    bool bezel = (x < 203 || x > 277 || y < 267 || y > 291);
+                    return bezel ? new Color32(32, 34, 42, 255) : new Color32(68, 92, 118, 255); // TV 화면
+                }
+                if (x >= 186 && x <= 294 && y >= 244 && y <= 261)
+                {
+                    return (y % 6 == 0) ? new Color32(92, 62, 40, 255) : new Color32(138, 96, 62, 255); // TV 콘솔장
+                }
+
+                // 오른쪽 원목 책장 (x: 330~442, y: 246~304)
+                if (x >= 330 && x <= 442 && y >= 246 && y <= 304)
+                {
+                    if (x < 335 || x > 437 || y % 16 < 3) return new Color32(102, 68, 42, 255);
+                    int b = (x / 7 + y / 16) % 4;
+                    return b == 0 ? new Color32(185, 78, 72, 255) :
+                           b == 1 ? new Color32(72, 132, 178, 255) :
+                           b == 2 ? new Color32(85, 152, 98, 255) :
+                                    new Color32(215, 178, 78, 255);
+                }
+
+                // 따뜻한 크림 베이지 벽지 + 하단 걸레받이 몰딩
+                if (y < 248) return new Color32(128, 94, 66, 255);
+                return (x % 16 == 0) ? new Color32(218, 202, 176, 255) : new Color32(232, 218, 194, 255);
+            }
+
+            // 하단 우측 현관 타일 & 현관문 (x: 365~462, y: 14~64)
+            if (x >= 365 && x <= 462 && y <= 64)
+            {
+                bool tile = (x % 16 == 0) || (y % 16 == 0);
+                return tile ? new Color32(82, 86, 94, 255) : new Color32(128, 134, 144, 255);
+            }
+
+            // 중앙 L자 패브릭 소파 (가로 등받이 x: 150~330, y: 170~208 / 세로 팔걸이 x: 150~184, y: 120~170)
+            bool onSofaTop = (x >= 152 && x <= 328 && y >= 174 && y <= 212);
+            bool onSofaLeft = (x >= 152 && x <= 186 && y >= 118 && y <= 174);
+            if (onSofaTop || onSofaLeft)
+            {
+                bool cushionLine = (x % 44 == 0) || (y == 202) || (x == 158);
+                return cushionLine ? new Color32(128, 92, 68, 255) : new Color32(198, 156, 118, 255);
+            }
+
+            // 중앙 원목 커피 테이블 (x: 208~304, y: 118~154)
+            if (x >= 208 && x <= 304 && y >= 118 && y <= 154)
+            {
+                bool border = (x < 212 || x > 300 || y < 122 || y > 150);
+                return border ? new Color32(96, 62, 36, 255) : new Color32(156, 108, 68, 255);
+            }
+
+            // 중앙 거실 따뜻한 패브릭 러그 카펫 (x: 132~348, y: 88~224)
+            if (x >= 132 && x <= 348 && y >= 88 && y <= 224)
+            {
+                bool rugEdge = (x < 138 || x > 342 || y < 94 || y > 218);
+                if (rugEdge) return new Color32(198, 152, 86, 255);
+                bool weave = ((x + y) % 8 == 0);
+                return weave ? new Color32(172, 112, 92, 255) : new Color32(156, 98, 82, 255);
+            }
+
+            // 좌측 하단 & 우측 상단 관엽식물 화분
+            float p1 = Vector2.Distance(new Vector2(x, y), new Vector2(46f, 218f));
+            float p2 = Vector2.Distance(new Vector2(x, y), new Vector2(436f, 218f));
+            if (p1 < 14f || p2 < 14f)
+            {
+                return ((x + y) % 5 == 0) ? new Color32(46, 118, 68, 255) : new Color32(68, 158, 88, 255);
+            }
+
+            // 따뜻한 원목 마룻바닥
+            bool plank = (y % 12 == 0) || ((x + (y / 12) * 24) % 48 == 0);
+            int grain = (x * 5 + y * 9) % 10;
+            return plank
+                ? new Color32(118, 84, 54, 255)
+                : new Color32((byte)(172 + grain), (byte)(132 + grain), (byte)(88 + grain / 2), 255);
+        }
+
+        /// <summary>
+        /// 2번 맵: 『지하철역 (Subway Station)』 32비트 2D RPG 도트 맵 (480 x 320 px)
+        /// 상단 선로(자갈·침목·레일)와 정차 전동차·스크린도어, 노란 점자블록 안전선, 승강장 타일, 역명판 기둥, 벤치, 하단 개찰구!
+        /// </summary>
+        private static void GenerateSubwayStationMapSprite(string path)
+        {
+            int w = 480;
+            int h = 320;
+            Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            Color32[] pixels = new Color32[w * h];
+
+            for (int y = 0; y < h; y++)
+            {
+                for (int x = 0; x < w; x++)
+                {
+                    pixels[y * w + x] = SampleSubwayPixel(x, y, w, h);
+                }
+            }
+
+            tex.SetPixels32(pixels);
+            tex.Apply();
+            File.WriteAllBytes(path, tex.EncodeToPNG());
+            Object.DestroyImmediate(tex);
+        }
+
+        private static Color32 SampleSubwayPixel(int x, int y, int w, int h)
+        {
+            // 외곽 콘크리트 벽
+            if (x < 10 || x >= w - 10 || y < 10 || y >= h - 10)
+                return new Color32(42, 48, 58, 255);
+
+            // 상단 지하철 선로 & 정차한 전동차 구역 (y >= 238)
+            if (y >= 238)
+            {
+                // 전동차 지붕 및 창문 실루엣 (x: 40~440, y: 266~306)
+                if (x >= 40 && x <= 440 && y >= 268 && y <= 306)
+                {
+                    if (y >= 274 && y <= 284 && (x % 42 >= 8 && x % 42 <= 32))
+                        return new Color32(165, 215, 245, 255); // 전동차 창문 불빛
+                    if (y >= 268 && y <= 272)
+                        return new Color32(42, 118, 205, 255); // 지하철 파란 띠
+                    return (x % 84 < 2) ? new Color32(72, 78, 88, 255) : new Color32(182, 190, 202, 255);
+                }
+
+                // 선로 철도 레일 2줄 + 나무 침목 + 자갈
+                if (y == 248 || y == 249 || y == 260 || y == 261)
+                    return new Color32(168, 176, 188, 255); // 금속 레일
+                if (x % 14 < 5 && y >= 244 && y <= 265)
+                    return new Color32(78, 62, 52, 255); // 침목
+                int gravel = (x * 17 + y * 29) % 24;
+                return new Color32((byte)(44 + gravel), (byte)(46 + gravel), (byte)(54 + gravel), 255);
+            }
+
+            // 스크린도어 경계 라인 (y: 230~237)
+            if (y >= 230 && y <= 237)
+            {
+                bool doorGlass = (x % 60 >= 10 && x % 60 <= 50);
+                return doorGlass ? new Color32(118, 172, 205, 255) : new Color32(82, 92, 106, 255);
+            }
+
+            // 노란색 안전선 & 점자블록 (y: 212~224)
+            if (y >= 212 && y <= 224)
+            {
+                bool dot = (x % 4 < 2) && (y % 4 < 2);
+                return dot ? new Color32(248, 212, 52, 255) : new Color32(222, 178, 28, 255);
+            }
+
+            // 승강장 기둥 3개 (파란 역명판 띠 포함: x=100, 240, 380 / y=135~168)
+            bool onPillar = (Mathf.Abs(x - 100) < 16 || Mathf.Abs(x - 240) < 16 || Mathf.Abs(x - 380) < 16) && (y >= 135 && y <= 168);
+            if (onPillar)
+            {
+                if (y >= 148 && y <= 156) return new Color32(36, 112, 208, 255); // 파란 역명판 띠
+                return new Color32(198, 204, 214, 255);
+            }
+
+            // 승강장 대기 벤치 2개 (x: 138~202, 278~342 / y: 144~160)
+            bool onBench = ((x >= 138 && x <= 202) || (x >= 278 && x <= 342)) && (y >= 144 && y <= 160);
+            if (onBench)
+            {
+                return (x % 16 < 2) ? new Color32(58, 66, 78, 255) : new Color32(72, 128, 178, 255);
+            }
+
+            // 하단 지하철 개찰구 게이트 (y: 24~56)
+            if (y >= 24 && y <= 56 && x >= 70 && x <= 410)
+            {
+                if (x % 48 < 12)
+                {
+                    if (y >= 46 && y <= 52) return new Color32(58, 218, 112, 255); // 초록 통과등
+                    return new Color32(158, 166, 178, 255); // 금속 개찰구 기둥
+                }
+            }
+
+            // 지하철 승강장 밝은 회색 대리석 바닥 타일
+            bool grid = (x % 20 == 0) || (y % 20 == 0);
+            int shade = ((x / 20 + y / 20) % 2 == 0) ? 6 : 0;
+            return grid
+                ? new Color32(96, 104, 118, 255)
+                : new Color32((byte)(136 + shade), (byte)(144 + shade), (byte)(158 + shade), 255);
+        }
+
+        /// <summary>
+        /// 3번 맵: 『기억 속의 공간 (Memory Dreamscape)』 32비트 2D RPG 도트 맵 (480 x 320 px)
+        /// 1번맵(집 거실)과 2번맵(지하철역)이 중앙의 황금빛 기억 경계를 중심으로 자연스럽게 어우러지는 초현실 융합 공간!
+        /// </summary>
+        private static void GenerateMemoryFusionMapSprite(string path)
+        {
+            int w = 480;
+            int h = 320;
+            Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            Color32[] pixels = new Color32[w * h];
+
+            for (int y = 0; y < h; y++)
+            {
+                for (int x = 0; x < w; x++)
+                {
+                    // 왼쪽은 집 거실, 오른쪽은 지하철역이 물결치는 기억 경계선으로 자연스럽게 융합
+                    float waveBoundary = (w * 0.5f) + Mathf.Sin(y * 0.045f) * 32f + Mathf.Cos(y * 0.09f) * 12f;
+                    float distFromBoundary = x - waveBoundary;
+
+                    Color32 homeCol = SampleLivingRoomPixel(x, y, w, h);
+                    Color32 subwayCol = SampleSubwayPixel(x, y, w, h);
+
+                    if (Mathf.Abs(distFromBoundary) < 5f)
+                    {
+                        // 두 기억이 만나는 황금빛 별빛 균열 경계
+                        pixels[y * w + x] = new Color32(248, 218, 112, 255);
+                    }
+                    else if (Mathf.Abs(distFromBoundary) < 26f)
+                    {
+                        // 자연스러운 그라데이션 블렌딩 + 몽환적인 보라/황금 기억 안개
+                        float t = Mathf.Clamp01((distFromBoundary + 26f) / 52f);
+                        Color blended = Color.Lerp(homeCol, subwayCol, t);
+                        blended = Color.Lerp(blended, new Color(0.62f, 0.52f, 0.88f, 1f), 0.22f);
+                        if ((x * 23 + y * 41) % 131 == 0) blended = new Color(1f, 0.92f, 0.55f, 1f);
+                        pixels[y * w + x] = blended;
+                    }
+                    else if (distFromBoundary < 0f)
+                    {
+                        // 왼쪽: 따뜻한 노을/기억빛이 감도는 집 거실
+                        Color c = Color.Lerp(homeCol, new Color(0.95f, 0.78f, 0.52f, 1f), 0.12f);
+                        pixels[y * w + x] = c;
+                    }
+                    else
+                    {
+                        // 오른쪽: 몽환적인 푸른빛이 감도는 지하철역
+                        Color c = Color.Lerp(subwayCol, new Color(0.38f, 0.52f, 0.88f, 1f), 0.16f);
+                        pixels[y * w + x] = c;
+                    }
+                }
+            }
+
+            tex.SetPixels32(pixels);
+            tex.Apply();
+            File.WriteAllBytes(path, tex.EncodeToPNG());
+            Object.DestroyImmediate(tex);
+        }
+
         private static void GenerateVoidSlotSprite(string path)
         {
             int w = 132;
@@ -1542,15 +1811,19 @@ namespace FragmentRPG.EditorTools
 
                     if (onBorder)
                     {
-                        tex.SetPixel(x, y, dashed ? new Color(1.0f, 0.85f, 0.42f, 0.95f) : new Color(0.55f, 0.35f, 0.85f, 0.55f));
+                        tex.SetPixel(x, y, dashed ? new Color(1.0f, 0.85f, 0.42f, 0.98f) : new Color(0.42f, 0.24f, 0.68f, 0.92f));
                         continue;
                     }
 
-                    // 반투명 황금/보라빛 마법 테두리 안쪽으로 실제 강물이 자연스럽게 비치도록 구성
+                    // 빈 배경 구멍(복원 시 이 가림막이 사라지며 아래의 실제 거실/지하철역 배경이 나타남!)
                     float nx = (x - w * 0.5f) / (w * 0.5f);
                     float ny = (y - h * 0.5f) / (h * 0.5f);
                     float r = Mathf.Sqrt(nx * nx + ny * ny);
-                    Color voidCol = new Color(0.12f, 0.08f, 0.24f, Mathf.Lerp(0.18f, 0.42f, Mathf.Clamp01(r)));
+                    Color voidCol = Color.Lerp(new Color(0.06f, 0.05f, 0.12f, 0.94f), new Color(0.14f, 0.10f, 0.24f, 0.92f), Mathf.Clamp01(r));
+                    if ((x * 37 + y * 53) % 181 == 0)
+                    {
+                        voidCol = new Color(0.75f, 0.65f, 1.0f, 0.9f);
+                    }
                     tex.SetPixel(x, y, voidCol);
                 }
             }

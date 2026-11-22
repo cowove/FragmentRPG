@@ -99,7 +99,61 @@ namespace FragmentRPG
             if (pastMemoryStage2 != null) pastMemoryStage2.SetActive(false);
             if (pastMemoryStage3 != null) pastMemoryStage3.SetActive(false);
 
+            // 맵 전체에서 비어진 배경 3곳을 랜덤 위치에 배치
+            RandomizeAllStageBlankSlots();
+
             SwitchSpace(SpaceRepairShop);
+        }
+
+        /// <summary>
+        /// 각 스테이지(1번맵 집 거실, 2번맵 지하철역, 3번맵 기억 속 공간)의
+        /// 비어진 배경 퍼즐 칸 3개를 맵 전체 후보 좌표 중 랜덤으로 3곳 선택해 배치합니다.
+        /// </summary>
+        public void RandomizeAllStageBlankSlots()
+        {
+            RandomizeBlankSlotsInStage(stage1Root);
+            RandomizeBlankSlotsInStage(stage2Root);
+            RandomizeBlankSlotsInStage(stage3Root);
+        }
+
+        private void RandomizeBlankSlotsInStage(GameObject stageRoot)
+        {
+            if (stageRoot == null) return;
+
+            Transform slotsParent = stageRoot.transform.Find("BackgroundPuzzleSlots");
+            if (slotsParent == null) return;
+
+            // 맵 전체(18 x 12)에 고르게 분포된 8개 후보 위치 (플레이어 시작점 및 외벽과 겹치지 않음)
+            List<Vector3> candidatePositions = new List<Vector3>
+            {
+                new Vector3(-4.2f,  2.8f, 0f),  // 좌상단
+                new Vector3( 1.2f,  3.1f, 0f),  // 중상단
+                new Vector3( 6.4f,  2.8f, 0f),  // 우상단
+                new Vector3(-4.5f,  0.0f, 0f),  // 좌중앙
+                new Vector3( 6.5f,  0.0f, 0f),  // 우중앙
+                new Vector3(-4.0f, -3.1f, 0f),  // 좌하단
+                new Vector3( 4.8f, -3.2f, 0f),  // 우하단
+                new Vector3( 1.2f,  0.4f, 0f)   // 정중앙
+            };
+
+            // Fisher-Yates 셔플로 중복 없이 랜덤 3곳 선정
+            for (int i = candidatePositions.Count - 1; i > 0; i--)
+            {
+                int j = UnityEngine.Random.Range(0, i + 1);
+                Vector3 temp = candidatePositions[i];
+                candidatePositions[i] = candidatePositions[j];
+                candidatePositions[j] = temp;
+            }
+
+            int idx = 0;
+            foreach (Transform child in slotsParent)
+            {
+                if (idx < candidatePositions.Count)
+                {
+                    child.position = candidatePositions[idx];
+                    idx++;
+                }
+            }
         }
 
         public void BindMultiStageReferences(
@@ -199,22 +253,22 @@ namespace FragmentRPG
                 if (inShop)
                 {
                     dialogSpeakerText.text = "[거점: 기억 수리점 대공방]";
-                    dialogBodyText.text = "넓어진 대공방에 3개의 의뢰 작업대가 배치되어 있습니다!\n• 왼쪽: Ep.1 시계공 노인 & 회중시계 포털  |  중앙: Ep.2 무명 화가 & 캔버스 포털  |  오른쪽: Ep.3 기억의 잔향 & 태엽 코어 포털";
+                    dialogBodyText.text = "넓어진 대공방에 3개의 기억 포털이 준비되어 있습니다!\n• 왼쪽: 1번맵 [집 거실]  |  중앙: 2번맵 [지하철역]  |  오른쪽: 3번맵 [기억 속의 공간 (거실+지하철역)]";
                 }
                 else if (inStg1)
                 {
-                    dialogSpeakerText.text = "[Stage 1 — Ep.1 시계공의 황혼 시계탑 대광장]";
-                    dialogBodyText.text = "넓어진 분수대 정원을 탐색해 [기억조각 1, 2, 3]을 모아 끊어진 운하 다리 3곳을 복원하세요!\n다리가 이어지면 위쪽 시계탑 대광장으로 건너가 과거의 기억(09:00 / 11:30 / 11:55)과 최종 수리 제단을 조사할 수 있습니다.";
+                    dialogSpeakerText.text = "[Stage 1 — 1번 맵: 집 거실]";
+                    dialogBodyText.text = "따뜻한 집 거실 곳곳을 탐색해 [기억조각 1, 2, 3]을 모아, 맵 전체에 랜덤으로 뚫린 [빈 배경 1, 2, 3]에 끼워 넣으세요!\n거실의 빈 배경이 모두 복원되면 과거의 기억이 나타납니다.";
                 }
                 else if (inStg2)
                 {
-                    dialogSpeakerText.text = "[Stage 2 — Ep.2 화가의 달빛 아틀리에 대정원]";
-                    dialogBodyText.text = "보랏빛 달빛 정원에서 화가의 [기억조각 1, 2, 3]을 모아 은하수 연못의 끊어진 다리 3곳을 복원하세요!\n복원 후 위쪽 야외 화실 테라스에서 폭풍우 치던 밤의 진실과 최종 수리 제단을 조사할 수 있습니다.";
+                    dialogSpeakerText.text = "[Stage 2 — 2번 맵: 지하철역]";
+                    dialogBodyText.text = "지하철역 승강장과 대합실을 탐색해 [기억조각 1, 2, 3]을 모아, 맵 전체에 랜덤으로 뚫린 [빈 배경 1, 2, 3]을 복원하세요!\n승강장 배경이 완성되면 과거의 기억이 나타납니다.";
                 }
                 else if (inStg3)
                 {
-                    dialogSpeakerText.text = "[Stage 3 — Ep.3 수리공의 별빛 기억 대성소]";
-                    dialogBodyText.text = "황금 기어 회로가 빛나는 별빛 성소에서 주인공 자신의 [기억조각 1, 2, 3]을 모아 차원 다리 3곳을 복원하세요!\n복원 후 위쪽 중앙 신전에서 기억 수리점의 탄생 비밀을 복원할 수 있습니다.";
+                    dialogSpeakerText.text = "[Stage 3 — 3번 맵: 기억 속의 공간 (집 거실 + 지하철역)]";
+                    dialogBodyText.text = "1번맵(집 거실)과 2번맵(지하철역)이 하나로 어우러진 기억 속 공간입니다!\n랜덤으로 비어 있는 배경 3곳을 기억조각 1, 2, 3으로 채워 마지막 진실을 확인하세요.";
                 }
             }
 
@@ -261,7 +315,61 @@ namespace FragmentRPG
             if (pastMemoryStage2 != null) pastMemoryStage2.SetActive(false);
             if (pastMemoryStage3 != null) pastMemoryStage3.SetActive(false);
 
+            // 맵 전체에서 비어진 배경 3곳을 랜덤 위치에 배치
+            RandomizeAllStageBlankSlots();
+
             SwitchSpace(SpaceRepairShop);
+        }
+
+        /// <summary>
+        /// 각 스테이지(1번맵 집 거실, 2번맵 지하철역, 3번맵 기억 속 공간)의
+        /// 비어진 배경 퍼즐 칸 3개를 맵 전체 후보 좌표 중 랜덤으로 3곳 선택해 배치합니다.
+        /// </summary>
+        public void RandomizeAllStageBlankSlots()
+        {
+            RandomizeBlankSlotsInStage(stage1Root);
+            RandomizeBlankSlotsInStage(stage2Root);
+            RandomizeBlankSlotsInStage(stage3Root);
+        }
+
+        private void RandomizeBlankSlotsInStage(GameObject stageRoot)
+        {
+            if (stageRoot == null) return;
+
+            Transform slotsParent = stageRoot.transform.Find("BackgroundPuzzleSlots");
+            if (slotsParent == null) return;
+
+            // 맵 전체(18 x 12)에 고르게 분포된 8개 후보 위치 (플레이어 시작점 및 외벽과 겹치지 않음)
+            List<Vector3> candidatePositions = new List<Vector3>
+            {
+                new Vector3(-4.2f,  2.8f, 0f),  // 좌상단
+                new Vector3( 1.2f,  3.1f, 0f),  // 중상단
+                new Vector3( 6.4f,  2.8f, 0f),  // 우상단
+                new Vector3(-4.5f,  0.0f, 0f),  // 좌중앙
+                new Vector3( 6.5f,  0.0f, 0f),  // 우중앙
+                new Vector3(-4.0f, -3.1f, 0f),  // 좌하단
+                new Vector3( 4.8f, -3.2f, 0f),  // 우하단
+                new Vector3( 1.2f,  0.4f, 0f)   // 정중앙
+            };
+
+            // Fisher-Yates 셔플로 중복 없이 랜덤 3곳 선정
+            for (int i = candidatePositions.Count - 1; i > 0; i--)
+            {
+                int j = UnityEngine.Random.Range(0, i + 1);
+                Vector3 temp = candidatePositions[i];
+                candidatePositions[i] = candidatePositions[j];
+                candidatePositions[j] = temp;
+            }
+
+            int idx = 0;
+            foreach (Transform child in slotsParent)
+            {
+                if (idx < candidatePositions.Count)
+                {
+                    child.position = candidatePositions[idx];
+                    idx++;
+                }
+            }
         }
 
         public void RefreshHUD()
@@ -275,7 +383,7 @@ namespace FragmentRPG
             bool contradictionDone = PuzzleManager.Instance != null && PuzzleManager.Instance.IsContradictionPuzzleSolved;
             bool allCleared = PuzzleManager.Instance != null && PuzzleManager.Instance.IsEpisodeFullyRepaired;
 
-            string stageTitle = stg == 1 ? "Ep.1 시계탑 대광장" : (stg == 2 ? "Ep.2 달빛 화실 정원" : "Ep.3 별빛 기억 성소");
+            string stageTitle = stg == 1 ? "1번맵: 집 거실" : (stg == 2 ? "2번맵: 지하철역" : "3번맵: 기억 속 공간");
 
             if (headerTitleText != null)
             {

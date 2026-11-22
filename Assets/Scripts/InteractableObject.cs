@@ -145,7 +145,7 @@ namespace FragmentRPG
         }
 
         /// <summary>
-        /// 알맞은 기억조각이 끼워졌을 때 비어진 배경 칸을 실제 일러스트 배경 타일로 복원합니다.
+        /// 알맞은 기억조각이 끼워졌을 때 비어진 구멍(가림막)을 제거하여 실제 맵 배경이 100% 자연스럽게 드러나게 합니다.
         /// </summary>
         public void FillBlankSlot()
         {
@@ -158,8 +158,13 @@ namespace FragmentRPG
                 if (restoredSlotSprite != null)
                 {
                     sr.sprite = restoredSlotSprite;
+                    sr.color = filledBackgroundColor;
                 }
-                sr.color = filledBackgroundColor;
+                else
+                {
+                    // 가림막을 투명하게 꺼서 아래의 실제 고퀄리티 맵 배경이 이음새 없이 완벽히 드러나도록 처리
+                    sr.enabled = false;
+                }
             }
 
             Collider2D col = GetComponent<Collider2D>();
@@ -198,6 +203,7 @@ namespace FragmentRPG
             SpriteRenderer sr = GetComponent<SpriteRenderer>();
             if (sr != null)
             {
+                sr.enabled = true;
                 if (emptySlotSprite != null)
                 {
                     sr.sprite = emptySlotSprite;
