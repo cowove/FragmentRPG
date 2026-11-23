@@ -1082,10 +1082,9 @@ namespace FragmentRPG.EditorTools
                 Directory.CreateDirectory(SpriteFolder);
             }
 
-            GenerateRepairShop2DRPGMapSprite($"{SpriteFolder}/Spr_Map0_RepairShop.png");
-            GenerateLivingRoomMapSprite($"{SpriteFolder}/Spr_Map1_LivingRoom.png");
-            GenerateSubwayStationMapSprite($"{SpriteFolder}/Spr_Map2_SubwayStation.png");
-            GenerateMemoryFusionMapSprite($"{SpriteFolder}/Spr_Map3_MemoryFusion.png");
+            // 이미 고퀄리티 32비트 픽셀아트 일러스트로 덮어쓴 PNG들을 보존하고, 지하철역만 없으면 생성
+            if (!File.Exists($"{SpriteFolder}/Spr_Map2_SubwayStation.png"))
+                GenerateSubwayStationMapSprite($"{SpriteFolder}/Spr_Map2_SubwayStation.png");
 
             GenerateFountainPropSprite($"{SpriteFolder}/Spr_Fountain_HQ.png");
             GenerateEaselPropSprite($"{SpriteFolder}/Spr_Easel_HQ.png");
