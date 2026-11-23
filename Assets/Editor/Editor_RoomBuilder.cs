@@ -17,7 +17,7 @@ namespace FragmentRPG.EditorTools
     public static class Editor_RoomBuilder
     {
         private const string SpriteFolder = "Assets/Resources/GeneratedSprites";
-        private const string AutoBuildKey = "FragmentRPG_Unified2DRPG_v12";
+        private const string AutoBuildKey = "FragmentRPG_MasterpiecePixelMaps_v13";
 
         static Editor_RoomBuilder()
         {
@@ -63,10 +63,10 @@ namespace FragmentRPG.EditorTools
 
             EnsureRichArtSprites();
 
-            Sprite repairShopBg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Map0_RepairShop.png");
-            Sprite stage1Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Map1_LivingRoom.png");
+            Sprite repairShopBg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_RepairShop_2DRPG.png");
+            Sprite stage1Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Map1_LivingRoom_Art.png");
             Sprite stage2Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Map2_SubwayStation.png");
-            Sprite stage3Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Map3_MemoryFusion.png");
+            Sprite stage3Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Map3_MemoryFusion_Art.png");
 
             Sprite voidSlotSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_VoidSlot.png");
             // null을 전달하면 복원 시 가림막이 사라지며 아래의 실제 2D RPG 맵 배경이 이음새 없이 완벽히 드러납니다!
@@ -1100,10 +1100,10 @@ namespace FragmentRPG.EditorTools
 
             AssetDatabase.Refresh();
 
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Map0_RepairShop.png", 32f, FilterMode.Point, 1024);
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Map1_LivingRoom.png", 32f, FilterMode.Point, 1024);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_RepairShop_2DRPG.png", 32f, FilterMode.Point, 1024);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Map1_LivingRoom_Art.png", 32f, FilterMode.Point, 1024);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Map2_SubwayStation.png", 32f, FilterMode.Point, 1024);
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Map3_MemoryFusion.png", 32f, FilterMode.Point, 1024);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Map3_MemoryFusion_Art.png", 32f, FilterMode.Point, 1024);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Fountain_HQ.png", 48f, FilterMode.Point);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Easel_HQ.png", 48f, FilterMode.Point);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_VoidSlot.png", 48f, FilterMode.Bilinear);
