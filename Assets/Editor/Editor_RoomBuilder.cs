@@ -17,7 +17,7 @@ namespace FragmentRPG.EditorTools
     public static class Editor_RoomBuilder
     {
         private const string SpriteFolder = "Assets/Resources/GeneratedSprites";
-        private const string AutoBuildKey = "FragmentRPG_LivingRoomSubwayFusion_v11";
+        private const string AutoBuildKey = "FragmentRPG_Unified2DRPG_v12";
 
         static Editor_RoomBuilder()
         {
@@ -63,7 +63,7 @@ namespace FragmentRPG.EditorTools
 
             EnsureRichArtSprites();
 
-            Sprite repairShopBg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_RepairShop_2DRPG.png");
+            Sprite repairShopBg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Map0_RepairShop.png");
             Sprite stage1Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Map1_LivingRoom.png");
             Sprite stage2Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Map2_SubwayStation.png");
             Sprite stage3Bg = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteFolder}/Spr_Map3_MemoryFusion.png");
@@ -1082,6 +1082,7 @@ namespace FragmentRPG.EditorTools
                 Directory.CreateDirectory(SpriteFolder);
             }
 
+            GenerateRepairShop2DRPGMapSprite($"{SpriteFolder}/Spr_Map0_RepairShop.png");
             GenerateLivingRoomMapSprite($"{SpriteFolder}/Spr_Map1_LivingRoom.png");
             GenerateSubwayStationMapSprite($"{SpriteFolder}/Spr_Map2_SubwayStation.png");
             GenerateMemoryFusionMapSprite($"{SpriteFolder}/Spr_Map3_MemoryFusion.png");
@@ -1099,7 +1100,7 @@ namespace FragmentRPG.EditorTools
 
             AssetDatabase.Refresh();
 
-            ConfigureSpriteImporter($"{SpriteFolder}/Spr_RepairShop_2DRPG.png", 32f, FilterMode.Point, 1024);
+            ConfigureSpriteImporter($"{SpriteFolder}/Spr_Map0_RepairShop.png", 32f, FilterMode.Point, 1024);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Map1_LivingRoom.png", 32f, FilterMode.Point, 1024);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Map2_SubwayStation.png", 32f, FilterMode.Point, 1024);
             ConfigureSpriteImporter($"{SpriteFolder}/Spr_Map3_MemoryFusion.png", 32f, FilterMode.Point, 1024);
@@ -1516,6 +1517,148 @@ namespace FragmentRPG.EditorTools
                 }
             }
 
+            tex.Apply();
+            File.WriteAllBytes(path, tex.EncodeToPNG());
+            Object.DestroyImmediate(tex);
+        }
+
+        /// <summary>
+        /// 거점 맵: 『기억 수리점 공방 (Memory Repair Shop)』 32비트 2D RPG 도트 맵 (480 x 320 px)
+        /// 1~3번 챕터와 동일한 깔끔한 2D RPG 도트 화풍으로 원목 마루, 스테인드글라스 창문, 기억 유리병 책장, 황금 자수 카펫, 3개의 의뢰 작업대를 그립니다.
+        /// </summary>
+        private static void GenerateRepairShop2DRPGMapSprite(string path)
+        {
+            int w = 480;
+            int h = 320;
+            Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            Color32[] pixels = new Color32[w * h];
+
+            for (int y = 0; y < h; y++)
+            {
+                for (int x = 0; x < w; x++)
+                {
+                    int idx = y * w + x;
+
+                    // 1. 외곽 원목 몰딩 벽 테두리
+                    if (x < 12 || x >= w - 12 || y < 12 || y >= h - 12)
+                    {
+                        pixels[idx] = new Color32(52, 36, 26, 255);
+                        continue;
+                    }
+
+                    // 2. 상단 공방 벽면 (y >= 242): 아치형 스테인드글라스 창문 + 중앙 황금 벽시계 + 좌우 기억 유리병 책장
+                    if (y >= 242)
+                    {
+                        // 중앙 황금 벽시계 (x=240, y=276, 반경 18)
+                        float clockDist = Vector2.Distance(new Vector2(x, y), new Vector2(240f, 276f));
+                        if (clockDist <= 18f)
+                        {
+                            if (clockDist >= 14.5f) pixels[idx] = new Color32(228, 190, 82, 255); // 황금 테두리
+                            else if ((Mathf.Abs(x - 240) < 2 && y >= 276 && y <= 286) || (Mathf.Abs(y - 276) < 2 && x >= 232 && x <= 240))
+                                pixels[idx] = new Color32(42, 36, 32, 255); // 시계 바늘
+                            else pixels[idx] = new Color32(248, 240, 215, 255); // 시계판
+                            continue;
+                        }
+
+                        // 좌/우 아치형 스테인드글라스 창문 (x=150, x=330, y=274)
+                        float winL = Vector2.Distance(new Vector2(x, y), new Vector2(150f, 276f));
+                        float winR = Vector2.Distance(new Vector2(x, y), new Vector2(330f, 276f));
+                        if (winL <= 18f || winR <= 18f)
+                        {
+                            bool frame = (winL >= 15f && winL <= 18f) || (winR >= 15f && winR <= 18f) || (x % 9 == 0) || (y % 9 == 0);
+                            pixels[idx] = frame ? new Color32(82, 58, 40, 255) : new Color32(128, 192, 238, 255);
+                            continue;
+                        }
+
+                        // 좌측(x: 24~114) & 우측(x: 366~456) 기억 보관 유리병 & 책장
+                        if ((x >= 24 && x <= 114 || x >= 366 && x <= 456) && y >= 248 && y <= 302)
+                        {
+                            if (x == 24 || x == 114 || x == 366 || x == 456 || y % 16 < 3)
+                            {
+                                pixels[idx] = new Color32(94, 62, 38, 255);
+                            }
+                            else if (x % 8 < 6)
+                            {
+                                int jar = (x / 8 + y / 16) % 4;
+                                pixels[idx] = jar == 0 ? new Color32(245, 205, 85, 255) :
+                                              jar == 1 ? new Color32(95, 215, 195, 255) :
+                                              jar == 2 ? new Color32(195, 118, 235, 255) :
+                                                         new Color32(235, 108, 118, 255);
+                            }
+                            else
+                            {
+                                pixels[idx] = new Color32(58, 42, 32, 255);
+                            }
+                            continue;
+                        }
+
+                        // 공방 상단 벽지 & 걸레받이 몰딩
+                        if (y < 248) pixels[idx] = new Color32(106, 74, 48, 255);
+                        else pixels[idx] = (x % 16 == 0) ? new Color32(118, 86, 62, 255) : new Color32(134, 98, 70, 255);
+                        continue;
+                    }
+
+                    // 3. 3개의 의뢰 작업대 테이블 (좌: x=70~160, 중: x=195~285, 우: x=320~410 / y=166~202)
+                    bool onBench1 = (x >= 70 && x <= 160 && y >= 166 && y <= 202);
+                    bool onBench2 = (x >= 195 && x <= 285 && y >= 166 && y <= 202);
+                    bool onBench3 = (x >= 320 && x <= 410 && y >= 166 && y <= 202);
+                    if (onBench1 || onBench2 || onBench3)
+                    {
+                        bool edge = (y < 170 || y > 198 || x == 70 || x == 160 || x == 195 || x == 285 || x == 320 || x == 410);
+                        pixels[idx] = edge ? new Color32(82, 52, 30, 255) : new Color32(158, 110, 68, 255);
+                        continue;
+                    }
+
+                    // 4. 중앙 대형 황금 자수 벨벳 카펫 (x: 68~412, y: 58~218)
+                    if (x >= 68 && x <= 412 && y >= 58 && y <= 218)
+                    {
+                        bool outerGold = (x < 74 || x > 406 || y < 64 || y > 212);
+                        bool innerGold = (x >= 82 && x <= 398 && y >= 72 && y <= 204) &&
+                                         (x < 85 || x > 395 || y < 75 || y > 201);
+                        if (outerGold || innerGold)
+                        {
+                            pixels[idx] = new Color32(224, 186, 86, 255);
+                        }
+                        else
+                        {
+                            float cDist = Vector2.Distance(new Vector2(x, y), new Vector2(240f, 118f));
+                            if (Mathf.Abs(cDist - 26f) < 2.2f || Mathf.Abs(cDist - 14f) < 1.8f)
+                                pixels[idx] = new Color32(215, 178, 82, 255); // 중앙 황금 태엽 문양
+                            else
+                                pixels[idx] = ((x + y) % 10 == 0) ? new Color32(142, 54, 66, 255) : new Color32(118, 42, 54, 255);
+                        }
+                        continue;
+                    }
+
+                    // 5. 하단 중앙 출입구 매트 (x: 204~276, y: 14~38)
+                    if (x >= 204 && x <= 276 && y <= 38)
+                    {
+                        bool matEdge = (x < 208 || x > 272 || y < 18 || y > 34);
+                        pixels[idx] = matEdge ? new Color32(188, 152, 78, 255) : new Color32(128, 92, 58, 255);
+                        continue;
+                    }
+
+                    // 6. 좌/우 코너 관엽식물 화분
+                    float pot1 = Vector2.Distance(new Vector2(x, y), new Vector2(36f, 222f));
+                    float pot2 = Vector2.Distance(new Vector2(x, y), new Vector2(444f, 222f));
+                    float pot3 = Vector2.Distance(new Vector2(x, y), new Vector2(36f, 36f));
+                    float pot4 = Vector2.Distance(new Vector2(x, y), new Vector2(444f, 36f));
+                    if (pot1 < 13f || pot2 < 13f || pot3 < 13f || pot4 < 13f)
+                    {
+                        pixels[idx] = ((x + y) % 5 == 0) ? new Color32(48, 122, 72, 255) : new Color32(72, 162, 92, 255);
+                        continue;
+                    }
+
+                    // 7. 따뜻한 공방 오크 원목 마룻바닥
+                    bool plank = (y % 12 == 0) || ((x + (y / 12) * 24) % 48 == 0);
+                    int grain = (x * 5 + y * 9) % 10;
+                    pixels[idx] = plank
+                        ? new Color32(98, 68, 44, 255)
+                        : new Color32((byte)(148 + grain), (byte)(108 + grain), (byte)(72 + grain / 2), 255);
+                }
+            }
+
+            tex.SetPixels32(pixels);
             tex.Apply();
             File.WriteAllBytes(path, tex.EncodeToPNG());
             Object.DestroyImmediate(tex);
